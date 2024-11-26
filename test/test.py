@@ -1,34 +1,21 @@
-from PySide6 import QtWidgets
-from PySide6.QtWidgets import QMainWindow, QFileDialog, QPushButton, QApplication
+from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog
 import sys
 import os
 import shutil
+from ui_test import Ui_MainWindow  # 引入生成的 UI 類
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
-        self.setupUi(self)
-        self.resize(1280, 720)  # 設置初始視窗大小為 1280x720
+        self.ui = Ui_MainWindow()
+        self.ui.setupUi(self)  # 設置 UI
 
-    def setupUi(self, MainWindow):
-        self.setWindowTitle("MainWindow")
-        self.setGeometry(100, 100, 300, 200)
-        
-        # 創建按鈕
-        self.pushButton = QPushButton("步驟1 圖片選擇", self)
-        self.pushButton.setGeometry(100, 50, 100, 100)
-        
-        # 創建其他按鈕
-        self.pushButton2 = QPushButton("步驟2 圖片選擇", self)
-        self.pushButton2.setGeometry(220, 50, 100, 100)
-        
-        self.pushButton3 = QPushButton("步驟3 圖片選擇", self)
-        self.pushButton3.setGeometry(340, 50, 100, 100)
-        
         # 連接按鈕的點擊事件
-        self.pushButton.clicked.connect(lambda: self.openFileDialog(1))
-        self.pushButton2.clicked.connect(lambda: self.openFileDialog(2))
-        self.pushButton3.clicked.connect(lambda: self.openFileDialog(3))
+        self.ui.pushButton1.clicked.connect(lambda: self.openFileDialog(1))
+        self.ui.pushButton2.clicked.connect(lambda: self.openFileDialog(2))
+        self.ui.pushButton3.clicked.connect(lambda: self.openFileDialog(3))
+        self.ui.pushButton4.clicked.connect(lambda: self.openFileDialog(4))
+        self.ui.pushButton5.clicked.connect(lambda: self.openFileDialog(5))
 
     def openFileDialog(self, buttonNumber):
         options = QFileDialog.Options()
