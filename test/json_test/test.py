@@ -51,12 +51,7 @@ def load_json_variables(file_path):
 if __name__ == "__main__":
     # 導入 sv.json 的變數
     json_variables = load_json_variables('test\json_test\sv.json')
-    
     # 使用導入的變數
     print(json_variables)
-
-    def handle_start_button_click(self):
-        print("Start Btn have been clicked :>")
-    
     main_ui.main()
     
