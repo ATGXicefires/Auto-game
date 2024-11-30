@@ -56,7 +56,7 @@ if __name__ == "__main__":
     print(json_variables)
 
     def handle_start_button_click(self):
-        print("Start Btn have been clicked")
+        print("Start Btn have been clicked :>")
     
     main_ui.main()
     
