@@ -20,6 +20,11 @@ class MainWindow(QMainWindow):
         button2.setGeometry(100, 200, 200, 50) 
         button2.clicked.connect(self.on_new_button_click)
 
+        # 添加 "Start" 按鈕
+        start_button = QPushButton("Start", self)
+        start_button.setGeometry(100, 300, 200, 50)
+        start_button.clicked.connect(self.on_start_button_click)
+
     def on_button_click(self):
         self.handle_file_selection("Step_1")
 
@@ -70,7 +75,29 @@ class MainWindow(QMainWindow):
             json.dump(data, f, ensure_ascii=False, indent=4)
         print(f"Path saved to {json_path}")
 
-if __name__ == "__main__":
+    def on_start_button_click(self):
+        # 讀取現有的 JSON 資料
+        json_path = "test/json_test/sv.json"
+        if os.path.exists(json_path):
+            with open(json_path, 'r', encoding='utf-8') as f:
+                try:
+                    data = json.load(f)
+                    if not isinstance(data, dict):
+                        data = {}  # 如果不是字典，重置為空字典
+                except json.JSONDecodeError:
+                    data = {}  # 如果 JSON 解析失敗，重置為空字典
+        else:
+            data = {}
+
+        # 添加 "Start": "1" 到 JSON 資料
+        data["Start"] = "1"
+
+        # 寫入 JSON 檔案
+        with open(json_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+        print(f'"Start": "1" added to {json_path}')
+
+def main():
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
