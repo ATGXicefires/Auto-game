@@ -69,7 +69,7 @@ if __name__ == "__main__":
     ui_thread = threading.Thread(target=main_ui.main)
     ui_thread.start()
 
-    while True:
+    while ui_thread.is_alive():
         # 重新載入 JSON 檔案以檢查 "Start" 的值
         with open('test\\json_test\\sv.json', 'r', encoding='utf-8') as file:
             data = json.load(file)
@@ -82,10 +82,14 @@ if __name__ == "__main__":
         # 可以加入一些延遲以避免過於頻繁的檢查
         time.sleep(1)
     
+    if not ui_thread.is_alive():
+        print("UI 執行緒已結束，終止程式")
+        sys.exit()
+
     if Start:
         with open('test\\json_test\\sv.json', 'r', encoding='utf-8') as file:
             data = json.load(file)
-        Target_img = data.get("Step_1")
+        Target_img = data.get("Img[1]")
         location = wait_until_image(Target_img, confidence=0.9)
         if location:
             print("找到圖片")
