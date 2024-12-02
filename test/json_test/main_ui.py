@@ -2,8 +2,8 @@ import sys
 import os
 import shutil
 import json
-from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QFileDialog, QListWidget, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QSlider, QMenu
-from PySide6.QtGui import QPixmap
+from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QFileDialog, QListWidget, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QSlider, QMenu, QLineEdit, QMessageBox
+from PySide6.QtGui import QPixmap, QIntValidator
 from PySide6.QtCore import Qt
 
 class MainWindow(QMainWindow):
@@ -62,6 +62,18 @@ class MainWindow(QMainWindow):
         # 添加圖片顯示區域到右側
         self.image_label = QLabel(self)
         main_layout.addWidget(self.image_label)
+
+        # 在圖片顯示區域上添加一個輸入框
+        self.input_box = QLineEdit(self)
+        self.input_box.setValidator(QIntValidator(0, 30))  # 限制輸入為0到30的整數
+        self.input_box.setFixedSize(50, 50)  # 設置為正方形
+        self.input_box.setStyleSheet("background-color: white; color: black;")  # 設置背景顏色為白色，字體顏色為黑色
+        self.input_box.move(10, 10)  # 設置位置在左上角
+        self.input_box.setAlignment(Qt.AlignCenter)  # 文字居中
+        self.input_box.setPlaceholderText("0")  # 預設提示文字
+        self.input_box.editingFinished.connect(self.update_json_with_input)  # 當輸入框編輯完成時更新 JSON
+
+        self.current_image_key = None  # 用於存儲當前顯示圖片的鍵
 
         # 設置滾輪事件
         self.image_label.wheelEvent = self.wheelEvent
@@ -140,6 +152,8 @@ class MainWindow(QMainWindow):
             if os.path.basename(path) == item.text():
                 self.current_pixmap = QPixmap(path)
                 self.update_image_display()
+                self.current_image_key = key  # 記錄當前圖片的鍵
+                self.input_box.setText(key.split('[')[-1].split(']')[0])  # 顯示 Img[X] 的 X 值
                 break
 
     def update_image_display(self):
@@ -221,6 +235,28 @@ class MainWindow(QMainWindow):
             with open(json_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=4)
             print(f"Deleted {image_name} from JSON")
+
+    def update_json_with_input(self):
+        # 更新 JSON 文件中的 Img[X] 值
+        if self.current_image_key:
+            json_path = "test/json_test/sv.json"
+            with open(json_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+
+            # 更新對應的 Img[X] 值
+            new_value = self.input_box.text()
+            if new_value.isdigit():
+                new_key = f"Img[{new_value}]"
+                if new_key in data:
+                    QMessageBox.warning(self, "重複的數字", f"數字 {new_value} 已被使用，請選擇其他數字。")
+                else:
+                    data[new_key] = data.pop(self.current_image_key)
+                    self.current_image_key = new_key  # 更新當前圖片的鍵
+
+                    # 寫入更新後的 JSON 文件
+                    with open(json_path, 'w', encoding='utf-8') as f:
+                        json.dump(data, f, ensure_ascii=False, indent=4)
+                    print(f"Updated JSON with new key: {new_key}")
 
 def main():
     app = QApplication(sys.argv)
