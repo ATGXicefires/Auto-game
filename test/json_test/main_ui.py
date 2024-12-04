@@ -2,7 +2,7 @@ import sys
 import os
 import shutil
 import json
-from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QFileDialog, QListWidget, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QSlider, QMenu, QLineEdit, QMessageBox, QGraphicsView, QGraphicsScene, QStyle, QStyleOptionSlider
+from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QFileDialog, QListWidget, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QSlider, QMenu, QLineEdit, QMessageBox, QGraphicsView, QGraphicsScene, QStyle, QStyleOptionSlider, QGraphicsPixmapItem
 from PySide6.QtGui import QPixmap, QIntValidator, QPainter, QFont
 from PySide6.QtCore import Qt
 
@@ -130,6 +130,8 @@ class MainWindow(QMainWindow):
 
         self.current_image_key = None  # 用於存儲當前顯示圖片的鍵
 
+        self.display_sorted_images()  # 在初始化時顯示排序後的圖片
+
     def clear_json_file(self):
         # 清空 JSON 檔案並設置預設值
         json_path = "test/json_test/sv.json"
@@ -204,7 +206,8 @@ class MainWindow(QMainWindow):
             if os.path.basename(path) == item.text():
                 pixmap = QPixmap(path)
                 self.graphics_scene.clear()  # 清除現有的場景
-                self.graphics_scene.addPixmap(pixmap)  # 添加新的圖片
+                pixmap_item = self.graphics_scene.addPixmap(pixmap)  # 添加新的圖片
+                pixmap_item.setFlag(QGraphicsPixmapItem.ItemIsMovable)  # 設置圖片為可移動
                 self.current_image_key = key  # 記錄當前圖片的鍵
                 # self.input_box.setText(key.split('[')[-1].split(']')[0])  # 不顯示 Img[X] 的 X 值
                 self.input_box.setText("")  # 設置為空，不顯示任何內容
@@ -226,9 +229,16 @@ class MainWindow(QMainWindow):
     def wheelEvent(self, event):
         # 使用 Ctrl + 滾輪來縮放圖片
         if event.modifiers() == Qt.ControlModifier:
-            delta = event.angleDelta().y() / 120  # 每次滾動的單位
-            new_value = self.zoom_slider.value() + delta * 5  # 每次滾動改變5%
-            self.zoom_slider.setValue(max(10, min(200, new_value)))  # 限制在10%到200%之間
+            # 獲取鼠標在視圖中的位置
+            mouse_pos = self.graphics_view.mapToScene(event.position().toPoint())
+            # 檢查鼠標下的項目
+            item = self.graphics_scene.itemAt(mouse_pos, self.graphics_view.transform())
+            if isinstance(item, QGraphicsPixmapItem):
+                # 計算縮放因子
+                delta = event.angleDelta().y() / 120  # 每次滾動的單位
+                scale_factor = 1 + delta * 0.1  # 每次滾動改變10%
+                # 縮放圖片
+                item.setScale(item.scale() * scale_factor)
 
     def on_start_button_click(self):
         # 讀取現有的 JSON 資料
@@ -318,6 +328,36 @@ class MainWindow(QMainWindow):
     def on_preview_button_click(self):
         # 處理 "流程預覽" 按鈕的點擊事件
         print("流程預覽按鈕被點擊")
+        self.display_sorted_images()  # 顯示排序後的圖片
+
+    def display_sorted_images(self):
+        # 讀取 JSON 檔案並按 Step[Y] 排序顯示圖片
+        json_path = "test/json_test/sv.json"
+        with open(json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        # 過濾出 Step[Y] 鍵並排序
+        step_items = {k: v for k, v in data.items() if k.startswith("Step[")}
+        sorted_steps = sorted(step_items.items(), key=lambda item: int(item[0][5:-1]))
+
+        # 清除現有的場景
+        self.graphics_scene.clear()
+
+        # 設置初始位置
+        y_offset = 0
+
+        # 依序顯示圖片
+        for _, path in sorted_steps:
+            pixmap = QPixmap(path)
+            
+            # 自動縮放圖片以適應顯示區域
+            scaled_pixmap = pixmap.scaled(self.graphics_view.width(), self.graphics_view.height(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            
+            item = self.graphics_scene.addPixmap(scaled_pixmap)
+            item.setPos(0, y_offset)  # 設置每張圖片的位置
+            item.setFlag(QGraphicsPixmapItem.ItemIsMovable)  # 設置圖片為可移動
+            
+            y_offset += scaled_pixmap.height() + 10  # 更新 y_offset 以便下一張圖片不重疊
 
 def main():
     app = QApplication(sys.argv)
