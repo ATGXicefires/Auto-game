@@ -9,7 +9,7 @@ from PySide6.QtCore import Qt
 class ZoomSlider(QSlider):
     def __init__(self, orientation, parent=None):
         super().__init__(orientation, parent)
-
+    ''' # 功能沒做出來，到時候再說，先跳過 (非重點功能)
     def paintEvent(self, event):
         super().paintEvent(event)
         painter = QPainter(self)
@@ -24,7 +24,17 @@ class ZoomSlider(QSlider):
         # 在滑桿的圓點上方顯示當前值
         value_text = f"{self.value()}%"
         text_rect = handle_rect.translated(0, -30)  # 將文字位置上移
-        painter.drawText(text_rect, Qt.AlignCenter, value_text)
+        
+        # 設置背景顏色
+        painter.setBrush(Qt.white)
+        painter.setPen(Qt.NoPen)  # 不要邊框
+        painter.drawRect(text_rect)  # 繪製背景矩形
+        
+        # 設置字體顏色
+        painter.setPen(Qt.black)
+        # 使用 drawText 的另一種方式來確保文字顯示
+        painter.drawText(text_rect.x(), text_rect.y(), text_rect.width(), text_rect.height(), Qt.AlignCenter, value_text)
+    '''
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -48,23 +58,29 @@ class MainWindow(QMainWindow):
         # 設置固定寬度
         fixed_width = 200
 
-        # 添加第一個按鈕
+        # 添加選擇圖片按鈕
         button1 = QPushButton("選擇圖片", self)
         button1.setFixedWidth(fixed_width)  # 設置按鈕寬度
+        button1.setFixedHeight(50)  # 設置按鈕高度
+        button1.setFont(QFont("Arial", 14))  # 設置字體大小
         button1.clicked.connect(self.on_button_click)
         left_layout.addWidget(button1)
-
-        # 添加 "Start" 按鈕
-        start_button = QPushButton("程式開始", self)
-        start_button.setFixedWidth(fixed_width)  # 設置按鈕寬度
-        start_button.clicked.connect(self.on_start_button_click)
-        left_layout.addWidget(start_button)
 
         # 添加 "流程預覽" 按鈕
         preview_button = QPushButton("流程預覽", self)
         preview_button.setFixedWidth(fixed_width)  # 設置按鈕寬度
+        preview_button.setFixedHeight(50)  # 設置按鈕高度
+        preview_button.setFont(QFont("Arial", 14))  # 設置字體大小
         preview_button.clicked.connect(self.on_preview_button_click)
         left_layout.addWidget(preview_button)
+
+        # 添加 "Start" 按鈕
+        start_button = QPushButton("程式開始", self)
+        start_button.setFixedWidth(fixed_width)  # 設置按鈕寬度
+        start_button.setFixedHeight(50)  # 設置按鈕高度
+        start_button.setFont(QFont("Arial", 14))  # 設置字體大小
+        start_button.clicked.connect(self.on_start_button_click)
+        left_layout.addWidget(start_button)
 
         # 添加圖片列表
         self.image_list_widget = QListWidget(self)
@@ -85,6 +101,19 @@ class MainWindow(QMainWindow):
         # 將左側佈局添加到主佈局
         main_layout.addLayout(left_layout)
 
+        # 創建一個垂直佈局來包含圖片顯示區和輸入框
+        right_layout = QVBoxLayout()
+
+        # 在圖片顯示區域上方添加一個輸入框
+        self.input_box = QLineEdit(self)
+        self.input_box.setValidator(QIntValidator(1, 50))  # 限制輸入為1到50的整數
+        self.input_box.setFixedSize(50, 50)  # 設置為正方形
+        self.input_box.setStyleSheet("background-color: white; color: black;")  # 設置背景顏色為白色，字體顏色為黑色
+        self.input_box.setAlignment(Qt.AlignCenter)  # 文字居中
+        self.input_box.setPlaceholderText("0")  # 預設提示文字
+        self.input_box.editingFinished.connect(self.update_json_with_input)  # 當輸入框編輯完成時更新 JSON
+        right_layout.addWidget(self.input_box, alignment=Qt.AlignTop | Qt.AlignLeft)
+
         # 使用 QGraphicsView 和 QGraphicsScene 來顯示圖片
         self.graphics_view = QGraphicsView(self)
         self.graphics_view.setRenderHint(QPainter.Antialiasing)
@@ -94,17 +123,10 @@ class MainWindow(QMainWindow):
         self.graphics_view.setScene(self.graphics_scene)
         self.graphics_view.setFixedSize(1280, 720)  # 固定圖片顯示區域的尺寸
         self.graphics_view.setStyleSheet("border: 5px solid white;")  # 設置白色邊框
-        main_layout.addWidget(self.graphics_view)
+        right_layout.addWidget(self.graphics_view)
 
-        # 在圖片顯示區域上添加一個輸入框
-        self.input_box = QLineEdit(self)
-        self.input_box.setValidator(QIntValidator(1, 50))  # 限制輸入為1到50的整數
-        self.input_box.setFixedSize(50, 50)  # 設置為正方形
-        self.input_box.setStyleSheet("background-color: white; color: black;")  # 設置背景顏色為白色，字體顏色為黑色
-        self.input_box.move(10, 10)  # 設置位置在左上角
-        self.input_box.setAlignment(Qt.AlignCenter)  # 文字居中
-        self.input_box.setPlaceholderText("0")  # 預設提示文字
-        self.input_box.editingFinished.connect(self.update_json_with_input)  # 當輸入框編輯完成時更新 JSON
+        # 將右側佈局添加到主佈局
+        main_layout.addLayout(right_layout)
 
         self.current_image_key = None  # 用於存儲當前顯示圖片的鍵
 
@@ -186,6 +208,12 @@ class MainWindow(QMainWindow):
                 self.current_image_key = key  # 記錄當前圖片的鍵
                 # self.input_box.setText(key.split('[')[-1].split(']')[0])  # 不顯示 Img[X] 的 X 值
                 self.input_box.setText("")  # 設置為空，不顯示任何內容
+                
+                # 新增以下代碼以將圖片置中並設置縮放
+                self.graphics_view.setSceneRect(pixmap.rect())  # 設置場景矩形
+                self.graphics_view.fitInView(self.graphics_scene.sceneRect(), Qt.KeepAspectRatio)  # 置中圖片
+                self.graphics_view.scale(0.75, 0.75)  # 設置縮放為 75%
+                
                 break
 
     def on_zoom_slider_change(self):
