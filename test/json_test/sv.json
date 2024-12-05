@@ -1,6 +1,7 @@
 {
     "Start": "0",
-    "Step[1]": "test\\json_test\\cache\\螢幕擷取畫面 2024-12-03 221503.png",
-    "Step[2]": "test\\json_test\\cache\\螢幕擷取畫面 2024-12-01 110000.png",
-    "Step[3]": "test\\json_test\\cache\\螢幕擷取畫面 2024-11-30 163715.png"
+    "Img[1]": "test\\json_test\\cache\\螢幕擷取畫面 2024-12-04 210806.png",
+    "Img[2]": "test\\json_test\\cache\\螢幕擷取畫面 2024-12-04 205904.png",
+    "Step[1]": "test\\json_test\\cache\\螢幕擷取畫面 2024-12-04 210806.png",
+    "Step[2]": "test\\json_test\\cache\\螢幕擷取畫面 2024-12-04 205904.png"
 }

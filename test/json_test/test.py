@@ -87,12 +87,5 @@ if __name__ == "__main__":
         sys.exit()
 
     if Start:
-        with open('test\\json_test\\sv.json', 'r', encoding='utf-8') as file:
-            data = json.load(file)
-        Target_img = data.get("Img[1]")
-        location = wait_until_image(Target_img, confidence=0.9)
-        if location:
-            print("找到圖片")
-        else:
-            print("沒找到圖片")
+        print(main_ui.get_max_step_value())
 

@@ -39,7 +39,7 @@ class ZoomSlider(QSlider):
 class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
-        self.setWindowTitle("Test Window")
+        self.setWindowTitle("圖像識別自動化執行工具")
         self.setGeometry(100, 100, 800, 600)
         
         # 清空 JSON 檔案
@@ -65,6 +65,14 @@ class MainWindow(QMainWindow):
         button1.setFont(QFont("Arial", 14))  # 設置字體大小
         button1.clicked.connect(self.on_button_click)
         left_layout.addWidget(button1)
+
+        # 添加 "清除步驟" 按鈕
+        clear_steps_button = QPushButton("清除已設置步驟", self)
+        clear_steps_button.setFixedWidth(fixed_width)  # 設置按鈕寬度
+        clear_steps_button.setFixedHeight(50)  # 設置按鈕高度
+        clear_steps_button.setFont(QFont("Arial", 14))  # 設置字體大小
+        clear_steps_button.clicked.connect(self.clear_steps)
+        left_layout.addWidget(clear_steps_button)
 
         # 添加 "流程預覽" 按鈕
         preview_button = QPushButton("流程預覽", self)
@@ -104,7 +112,10 @@ class MainWindow(QMainWindow):
         # 創建一個垂直佈局來包含圖片顯示區和輸入框
         right_layout = QVBoxLayout()
 
-        # 在圖片顯示區域上方添加一個輸入框
+        # 在圖片顯示區域上方添加一個標籤和輸入框
+        label = QLabel("設定執行順序:", self)  # 添加標籤
+        label.setFont(QFont("Arial", 14))  # 設置字體大小與按鈕相同
+
         self.input_box = QLineEdit(self)
         self.input_box.setValidator(QIntValidator(1, 50))  # 限制輸入為1到50的整數
         self.input_box.setFixedSize(50, 50)  # 設置為正方形
@@ -112,7 +123,16 @@ class MainWindow(QMainWindow):
         self.input_box.setAlignment(Qt.AlignCenter)  # 文字居中
         self.input_box.setPlaceholderText("0")  # 預設提示文字
         self.input_box.editingFinished.connect(self.update_json_with_input)  # 當輸入框編輯完成時更新 JSON
-        right_layout.addWidget(self.input_box, alignment=Qt.AlignTop | Qt.AlignLeft)
+
+        # 創建一個水平佈局來包含標籤和輸入框
+        input_layout = QHBoxLayout()
+        input_layout.setSpacing(0)  # 設置間距為0，讓輸入框緊貼在標籤後面
+        input_layout.addWidget(label, alignment=Qt.AlignLeft)  # 添加標籤到水平佈局並靠左對齊
+        input_layout.addWidget(self.input_box, alignment=Qt.AlignLeft)  # 添加輸入框到水平佈局並靠左對齊
+
+        # 將水平佈局添加到右側佈局
+        right_layout.addLayout(input_layout)
+        right_layout.setAlignment(input_layout, Qt.AlignTop | Qt.AlignLeft)  # 設置對齊方式
 
         # 使用 QGraphicsView 和 QGraphicsScene 來顯示圖片
         self.graphics_view = QGraphicsView(self)
@@ -224,7 +244,7 @@ class MainWindow(QMainWindow):
         scale_factor = self.zoom_slider.value() / 100.0
         self.graphics_view.resetTransform()  # 重置任何現有的變換
         self.graphics_view.scale(scale_factor, scale_factor)  # 根據滑桿的值縮放圖片
-        self.zoom_slider.setToolTip(f"{self.zoom_slider.value()}%")  # 更新滑桿的提示文字
+        self.zoom_slider.setToolTip(f"{self.zoom_slider.value()}%")  # 更新滑桿的提��文字
 
     def wheelEvent(self, event):
         # 使用 Ctrl + 滾輪來縮放圖片
@@ -317,13 +337,14 @@ class MainWindow(QMainWindow):
                 if new_key in data:
                     QMessageBox.warning(self, "重複的數字", f"數字 {new_value} 已被使用，請選擇其他數字。")
                 else:
-                    data[new_key] = data.pop(self.current_image_key)
+                    # 保留 Img[X]，同時新增 Step[Y]
+                    data[new_key] = data[self.current_image_key]
                     self.current_image_key = new_key  # 更新當前圖片的鍵
 
                     # 寫入更新後的 JSON 文件
                     with open(json_path, 'w', encoding='utf-8') as f:
                         json.dump(data, f, ensure_ascii=False, indent=4)
-                    print(f"Updated JSON with new key: {new_key}")
+                    print(f"Added new key: {new_key} with value from {self.current_image_key}")
 
     def on_preview_button_click(self):
         # 處理 "流程預覽" 按鈕的點擊事件
@@ -345,6 +366,7 @@ class MainWindow(QMainWindow):
 
         # 設置初始位置
         y_offset = 0
+        previous_item = None
 
         # 依序顯示圖片
         for _, path in sorted_steps:
@@ -357,7 +379,56 @@ class MainWindow(QMainWindow):
             item.setPos(0, y_offset)  # 設置每張圖片的位置
             item.setFlag(QGraphicsPixmapItem.ItemIsMovable)  # 設置圖片為可移動
             
+            # 如果有前一個圖片，則添加箭頭
+            if previous_item:
+                arrow = self.graphics_scene.addLine(previous_item.x() + previous_item.pixmap().width() / 2,
+                                                    previous_item.y() + previous_item.pixmap().height(),
+                                                    item.x() + item.pixmap().width() / 2,
+                                                    item.y(),
+                                                    Qt.black)
+                arrow.setZValue(-1)  # 確保箭頭在圖片下方
+            
+            previous_item = item
             y_offset += scaled_pixmap.height() + 10  # 更新 y_offset 以便下一張圖片不重疊
+
+    def get_max_step_value(self):
+        '''
+        檢測 JSON 檔案中的 Step[Y] 的最大數值並返回。
+        
+        返回:
+        最大的 Step[Y] 數值，如果沒有則返回 0
+        '''
+        json_path = "test/json_test/sv.json"
+        max_value = 0
+        if os.path.exists(json_path):
+            with open(json_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                for key in data.keys():
+                    if key.startswith("Step["):
+                        try:
+                            value = int(key[5:-1])
+                            if value > max_value:
+                                max_value = value
+                        except ValueError:
+                            continue
+        return max_value
+
+    def clear_steps(self):
+        # 清空 JSON 檔案中的 Step[Y] 條目，保留 Img[X] 條目
+        json_path = "test/json_test/sv.json"
+        if os.path.exists(json_path):
+            with open(json_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+
+            # 刪除所有 Step[Y] 條目
+            keys_to_remove = [key for key in data.keys() if key.startswith("Step[")]
+            for key in keys_to_remove:
+                del data[key]
+
+            # 更新 JSON 文件
+            with open(json_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=4)
+            print("所有 Step[Y] 條目已清除")
 
 def main():
     app = QApplication(sys.argv)
