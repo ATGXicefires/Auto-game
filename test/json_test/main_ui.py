@@ -244,7 +244,7 @@ class MainWindow(QMainWindow):
         scale_factor = self.zoom_slider.value() / 100.0
         self.graphics_view.resetTransform()  # 重置任何現有的變換
         self.graphics_view.scale(scale_factor, scale_factor)  # 根據滑桿的值縮放圖片
-        self.zoom_slider.setToolTip(f"{self.zoom_slider.value()}%")  # 更新滑桿的提��文字
+        self.zoom_slider.setToolTip(f"{self.zoom_slider.value()}%")  # 更新滑桿的提示文字
 
     def wheelEvent(self, event):
         # 使用 Ctrl + 滾輪來縮放圖片
@@ -281,6 +281,11 @@ class MainWindow(QMainWindow):
         with open(json_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
         print(f'"Start": "1" added to {json_path}')
+
+        # 輸出 Step[Y] 的值
+        step_keys = [key for key in data.keys() if key.startswith("Step[")]
+        for step_key in step_keys:
+            print(f"{step_key}: {data[step_key]}")
 
     def closeEvent(self, event):
         # 結束應用程式

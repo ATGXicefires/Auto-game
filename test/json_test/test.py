@@ -87,5 +87,9 @@ if __name__ == "__main__":
         sys.exit()
 
     if Start:
-        print(main_ui.get_max_step_value())
+        # 創建 MainWindow 的實例
+        main_window = main_ui.MainWindow()
+        # 調用 get_max_step_value 方法
+        max_value = main_window.get_max_step_value()
+        print(max_value)
 
