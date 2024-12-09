@@ -73,10 +73,20 @@ def get_max_step_value(json_data):
 
 # 連接信號到槽函數
 def Start_ON():
+    max_step_value = 0
     print("Start")
     # 找出 "Step[Y]" 的最大 Y 值
     max_step_value = get_max_step_value(json_variables)
     print(f"最大 Step[Y] 值: {max_step_value}")
+
+    # 將 Step[Y] 的內容值存入 Step[] 陣列
+    step_array = []
+    for i in range(1, max_step_value + 1):
+        step_key = f"Image[{i}]"
+        if step_key in json_variables:
+            step_array.append(json_variables[step_key])
+    
+    print(f"Image[] 陣列內容: {step_array}")
 
 if __name__ == "__main__":
     # 創建 QApplication 實例
