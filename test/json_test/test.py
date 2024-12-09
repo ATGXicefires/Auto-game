@@ -6,6 +6,7 @@ import time
 import cv2
 import pyautogui
 import threading
+from PySide6.QtWidgets import QApplication
     
 def wait_until_image(image_path, confidence=0.9, timeout=10):
     '''
@@ -49,47 +50,51 @@ def load_json_variables(file_path):
     with open(file_path, 'r', encoding='utf-8') as file:
         data = json.load(file)
     
-    # 將 "Start" 預設為 0
-    data["Start"] = "0" # 到時候可以判斷是否為1來決定是否要執行
-    
-    # 將更新後的資料寫回 JSON 檔案
-    with open(file_path, 'w', encoding='utf-8') as file:
-        json.dump(data, file, ensure_ascii=False, indent=4)
-    
     return data
 
+def get_max_step_value(json_data):
+    '''
+    從 JSON 資料中找出 "Step[Y]" 的最大 Y 值。
+    
+    參數:
+    json_data: 包含 JSON 內容的字典
+    
+    返回:
+    最大的 Y 值
+    '''
+    max_step = 0
+    for key in json_data.keys():
+        if key.startswith("Step["):
+            # 提取 Y 值
+            y_value = int(key.split('[')[1].split(']')[0])
+            if y_value > max_step:
+                max_step = y_value
+    return max_step
+
+# 連接信號到槽函數
+def Start_ON():
+    print("Start")
+    # 找出 "Step[Y]" 的最大 Y 值
+    max_step_value = get_max_step_value(json_variables)
+    print(f"最大 Step[Y] 值: {max_step_value}")
+
 if __name__ == "__main__":
-    Start = False
+    # 創建 QApplication 實例
+    app = QApplication(sys.argv)
+
     # 導入 sv.json 的變數
     json_variables = load_json_variables('test\\json_test\\sv.json')
     # 使用導入的變數
     print(json_variables)
     
-    # 在新執行緒中運行 main_ui.main()
-    ui_thread = threading.Thread(target=main_ui.main)
-    ui_thread.start()
+    # 創建 MainWindow 的實例
+    main_window = main_ui.MainWindow()
 
-    while ui_thread.is_alive():
-        # 重新載入 JSON 檔案以檢查 "Start" 的值
-        with open('test\\json_test\\sv.json', 'r', encoding='utf-8') as file:
-            data = json.load(file)
-        
-        # 檢查 "Start" 是否為 "1"
-        if data.get("Start") == "1":
-            print("Start")
-            Start = True
-            break
-        # 可以加入一些延遲以避免過於頻繁的檢查
-        time.sleep(1)
-    
-    if not ui_thread.is_alive():
-        print("UI 執行緒已結束，終止程式")
-        sys.exit()
+    # 連接信號到槽函數
+    main_window.start_signal.connect(Start_ON)
 
-    if Start:
-        # 創建 MainWindow 的實例
-        main_window = main_ui.MainWindow()
-        # 調用 get_max_step_value 方法
-        max_value = main_window.get_max_step_value()
-        print(max_value)
+    # 顯示主窗口
+    main_window.show()
 
+    # 在主執行緒中運行應用程式
+    sys.exit(app.exec())

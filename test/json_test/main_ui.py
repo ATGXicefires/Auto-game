@@ -3,8 +3,8 @@ import os
 import shutil
 import json
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QFileDialog, QListWidget, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QSlider, QMenu, QLineEdit, QMessageBox, QGraphicsView, QGraphicsScene, QStyle, QStyleOptionSlider, QGraphicsPixmapItem
-from PySide6.QtGui import QPixmap, QIntValidator, QPainter, QFont
-from PySide6.QtCore import Qt
+from PySide6.QtGui import QPixmap, QIntValidator, QPainter, QFont, QPen
+from PySide6.QtCore import Qt, Signal  # 確保這裡有 Signal
 
 class ZoomSlider(QSlider):
     def __init__(self, orientation, parent=None):
@@ -37,6 +37,8 @@ class ZoomSlider(QSlider):
     '''
 
 class MainWindow(QMainWindow):
+    start_signal = Signal()  # 確保信號正確定義
+
     def __init__(self):
         super(MainWindow, self).__init__()
         self.setWindowTitle("圖像識別自動化執行工具")
@@ -153,11 +155,11 @@ class MainWindow(QMainWindow):
         self.display_sorted_images()  # 在初始化時顯示排序後的圖片
 
     def clear_json_file(self):
-        # 清空 JSON 檔案並設置預設值
+        # 清空 JSON 檔案並設置為全空
         json_path = "test/json_test/sv.json"
         with open(json_path, 'w', encoding='utf-8') as f:
-            json.dump({"Start": "0"}, f, ensure_ascii=False, indent=4)
-        print(f"Cleared {json_path} with default 'Start': '0'")
+            json.dump({}, f, ensure_ascii=False, indent=4)  # 設置為空字典
+        print(f"Cleared {json_path} and set to empty")
 
     def on_button_click(self):
         self.handle_file_selection()
@@ -261,31 +263,9 @@ class MainWindow(QMainWindow):
                 item.setScale(item.scale() * scale_factor)
 
     def on_start_button_click(self):
-        # 讀取現有的 JSON 資料
-        json_path = "test/json_test/sv.json"
-        if os.path.exists(json_path):
-            with open(json_path, 'r', encoding='utf-8') as f:
-                try:
-                    data = json.load(f)
-                    if not isinstance(data, dict):
-                        data = {}  # 如果不是字典，重置為空字典
-                except json.JSONDecodeError:
-                    data = {}  # 如果 JSON 解析失敗，重置為空字典
-        else:
-            data = {}
-
-        # 添加 "Start": "1" 到 JSON 資料
-        data["Start"] = "1"
-
-        # 寫入 JSON 檔案
-        with open(json_path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
-        print(f'"Start": "1" added to {json_path}')
-
-        # 輸出 Step[Y] 的值
-        step_keys = [key for key in data.keys() if key.startswith("Step[")]
-        for step_key in step_keys:
-            print(f"{step_key}: {data[step_key]}")
+        print("Start button clicked")  # 添加打印語句以確認按鈕被點擊
+        self.start_signal.emit()  # 發出信號
+        print("Signal emitted")  # 確認信號已發出
 
     def closeEvent(self, event):
         # 結束應用程式
@@ -386,37 +366,16 @@ class MainWindow(QMainWindow):
             
             # 如果有前一個圖片，則添加箭頭
             if previous_item:
+                pen = QPen(Qt.black)  # 使用 QPen 來設置箭頭顏色
                 arrow = self.graphics_scene.addLine(previous_item.x() + previous_item.pixmap().width() / 2,
                                                     previous_item.y() + previous_item.pixmap().height(),
                                                     item.x() + item.pixmap().width() / 2,
                                                     item.y(),
-                                                    Qt.black)
+                                                    pen)
                 arrow.setZValue(-1)  # 確保箭頭在圖片下方
             
             previous_item = item
             y_offset += scaled_pixmap.height() + 10  # 更新 y_offset 以便下一張圖片不重疊
-
-    def get_max_step_value(self):
-        '''
-        檢測 JSON 檔案中的 Step[Y] 的最大數值並返回。
-        
-        返回:
-        最大的 Step[Y] 數值，如果沒有則返回 0
-        '''
-        json_path = "test/json_test/sv.json"
-        max_value = 0
-        if os.path.exists(json_path):
-            with open(json_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                for key in data.keys():
-                    if key.startswith("Step["):
-                        try:
-                            value = int(key[5:-1])
-                            if value > max_value:
-                                max_value = value
-                        except ValueError:
-                            continue
-        return max_value
 
     def clear_steps(self):
         # 清空 JSON 檔案中的 Step[Y] 條目，保留 Img[X] 條目
