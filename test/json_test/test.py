@@ -1,4 +1,5 @@
 import main_ui
+import numpy as np
 import sys
 import os
 import json
@@ -7,36 +8,63 @@ import cv2
 import pyautogui
 import threading
 from PySide6.QtWidgets import QApplication
+from PIL import Image
+
+# 圖像比對函式
+def match_template(template_path, confidence=0.9, timeout=10):
+    """
+    在螢幕截圖中尋找模板圖像的位置。
     
-def wait_until_image(image_path, confidence=0.9, timeout=10):
-    '''
-    在指定的超時時間內，檢查螢幕上是否出現與給定影像檔案相匹配的影像。
-    
-    參數:
-    image_path: 影像檔案的路徑
-    confidence: 匹配的信心度,預設為0.9
-    timeout: 超時時間,預設為10秒
-    
-    返回:
-    如果找到匹配的影像，返回其位置；否則返回 None
-    '''
-    if not os.path.exists(image_path):
-        print(f"檔案不存在: {image_path}")
+    :param template_path: 模板圖片的路徑
+    :param confidence: 匹配的信心值(預設0.9)
+    :param timeout: 超時時間(預設10秒)
+    :return: 匹配位置 (x, y) 或 None
+    """
+    if not os.path.exists(template_path):
+        print(f"檔案不存在: {template_path}")
         return None
 
+    def read_image_with_pil(image_path):
+        try:
+            pil_image = Image.open(image_path)
+            return cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
+        except Exception as e:
+            print(f"無法讀取影像: {e}")
+            return None
+
     start_time = time.time()
-    
+
     while time.time() - start_time < timeout:
-        # 嘗試在螢幕上定位影像
-        result = pyautogui.locateOnScreen(image_path, confidence=confidence, grayscale=True)
-        # 如果找到匹配的影像，返回其位置
-        if result is not None:
-            print(f"匹配成功，位置：{result}")
-            return result
+        screenshot = pyautogui.screenshot()  # 截取螢幕
+        screenshot = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)  # 將PIL格式轉為OpenCV格式
+        template = read_image_with_pil(template_path)  # 使用 PIL 讀取模板圖像
+
+        if template is None:
+            print("無法讀取模板圖片")
+            return None
+
+        # 執行模板匹配
+        result = cv2.matchTemplate(screenshot, template, cv2.TM_CCOEFF_NORMED)
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+
+        # 檢查匹配度是否符合要求
+        if max_val >= confidence:
+            # 計算匹配位置的中心點
+            template_height, template_width = template.shape[:2]
+            center_x = max_loc[0] + template_width // 2
+            center_y = max_loc[1] + template_height // 2
+            print(f"找到匹配位置: {max_loc}, 匹配值: {max_val}, 中心點: ({center_x}, {center_y})")
+
+            # 平滑移動鼠標到中心點並點擊
+            pyautogui.moveTo(center_x, center_y, duration=0.5)  # duration 控制移動速度
+            pyautogui.click()
+            return (center_x, center_y)  # 返回匹配位置的中心點座標
+
         # 打印當前匹配的準確值
-        print(f"當前匹配準確值：{confidence}")
+        print(f"當前匹配準確值：{max_val}")
         # 每秒檢測一次
         time.sleep(1)
+
     print("未找到匹配的影像")
     return None
 
@@ -82,9 +110,9 @@ def Click_step_by_step(step_array):
     for image_path in step_array:
         print(f"正在尋找並點擊: {image_path}")
         # 使用 wait_until_image 函式尋找圖片
-        location = wait_until_image(image_path)
+        location = match_template(image_path)
         if location:
-            # 如果找到圖片，點擊該位置
+            # 如���找到圖片，點擊該位置
             pyautogui.click(location)
             print(f"已點擊: {image_path}")
         else:
