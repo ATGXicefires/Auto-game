@@ -66,45 +66,47 @@ def get_max_step_value(json_data):
     for key in json_data.keys():
         if key.startswith("Step["):
             # 提取 Y 值
-            y_value = int(key.split('[')[1].split(']')[0])
-            if y_value > max_step:
-                max_step = y_value
+            try:
+                y_value = int(key.split('[')[1].split(']')[0])
+                if y_value > max_step:
+                    max_step = y_value
+            except ValueError:
+                continue
     return max_step
+
+def step_by_step():
+    
+    pass
 
 # 連接信號到槽函數
 def Start_ON():
+    # 導入 sv.json 的變數
+    json_variables = load_json_variables('test\\json_test\\sv.json')
     max_step_value = 0
     print("Start")
     # 找出 "Step[Y]" 的最大 Y 值
     max_step_value = get_max_step_value(json_variables)
     print(f"最大 Step[Y] 值: {max_step_value}")
 
-    # 將 Step[Y] 的內容值存入 Step[] 陣列
+    # 將 Step[Y] 的內容值存入 step_array
     step_array = []
     for i in range(1, max_step_value + 1):
-        step_key = f"Image[{i}]"
+        step_key = f"Step[{i}]"
         if step_key in json_variables:
             step_array.append(json_variables[step_key])
     
-    print(f"Image[] 陣列內容: {step_array}")
+    # 打印出 step_array 中的所有值
+    for index in range(max_step_value):
+        print(f"step_array[{index}]: {step_array[index]}")
 
 if __name__ == "__main__":
     # 創建 QApplication 實例
     app = QApplication(sys.argv)
-
-    # 導入 sv.json 的變數
-    json_variables = load_json_variables('test\\json_test\\sv.json')
-    # 使用導入的變數
-    print(json_variables)
-    
     # 創建 MainWindow 的實例
     main_window = main_ui.MainWindow()
-
-    # 連接信號到槽函數
-    main_window.start_signal.connect(Start_ON)
-
     # 顯示主窗口
     main_window.show()
-
+    # 連接信號到槽函數
+    main_window.start_signal.connect(Start_ON)
     # 在主執行緒中運行應用程式
     sys.exit(app.exec())
