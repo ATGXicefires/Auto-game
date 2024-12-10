@@ -101,3 +101,4 @@ def apply_dark_theme():
         border-radius: 3px;
     }
     """
+    
