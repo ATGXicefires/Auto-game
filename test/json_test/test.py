@@ -20,12 +20,15 @@ def wait_until_image(image_path, confidence=0.9, timeout=10):
     返回:
     如果找到匹配的影像，返回其位置；否則返回 None
     '''
+    if not os.path.exists(image_path):
+        print(f"檔案不存在: {image_path}")
+        return None
+
     start_time = time.time()
-    template = cv2.imread(image_path, cv2.IMREAD_COLOR)
     
     while time.time() - start_time < timeout:
         # 嘗試在螢幕上定位影像
-        result = pyautogui.locateOnScreen(template, confidence=confidence, grayscale=True)
+        result = pyautogui.locateOnScreen(image_path, confidence=confidence, grayscale=True)
         # 如果找到匹配的影像，返回其位置
         if result is not None:
             print(f"匹配成功，位置：{result}")
@@ -74,9 +77,18 @@ def get_max_step_value(json_data):
                 continue
     return max_step
 
-def step_by_step():
-    
-    pass
+def Click_step_by_step(step_array):
+    # 依序尋找並點擊每個 Step[Y] 對應的圖片
+    for image_path in step_array:
+        print(f"正在尋找並點擊: {image_path}")
+        # 使用 wait_until_image 函式尋找圖片
+        location = wait_until_image(image_path)
+        if location:
+            # 如果找到圖片，點擊該位置
+            pyautogui.click(location)
+            print(f"已點擊: {image_path}")
+        else:
+            print(f"未找到: {image_path}")
 
 # 連接信號到槽函數
 def Start_ON():
@@ -84,6 +96,10 @@ def Start_ON():
     json_variables = load_json_variables('test\\json_test\\sv.json')
     max_step_value = 0
     print("Start")
+    
+    # 最小化主窗口
+    main_window.showMinimized()
+    
     # 找出 "Step[Y]" 的最大 Y 值
     max_step_value = get_max_step_value(json_variables)
     print(f"最大 Step[Y] 值: {max_step_value}")
@@ -98,6 +114,9 @@ def Start_ON():
     # 打印出 step_array 中的所有值
     for index in range(max_step_value):
         print(f"step_array[{index}]: {step_array[index]}")
+
+    # 呼叫 Click_step_by_step 並傳遞 step_array
+    Click_step_by_step(step_array)
 
 if __name__ == "__main__":
     # 創建 QApplication 實例
