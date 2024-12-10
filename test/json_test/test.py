@@ -112,7 +112,7 @@ def Click_step_by_step(step_array):
         # 使用 wait_until_image 函式尋找圖片
         location = match_template(image_path)
         if location:
-            # 如���找到圖片，點擊該位置
+            # 如果找到圖片，點擊該位置
             pyautogui.click(location)
             print(f"已點擊: {image_path}")
         else:
