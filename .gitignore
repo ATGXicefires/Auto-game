@@ -1,0 +1,34 @@
+# Python cache files
+__pycache__/
+*.pyc
+
+# Virtual environment directories
+venv/
+env/
+.venv/
+
+# IDE settings
+.vscode/
+.idea/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# PyQt-Fluent-Widgets-Gallery project files
+test/PyQt-Fluent-Widgets-Gallery/gallery.exe
+test/PyQt-Fluent-Widgets-Gallery/_internal/
+test/PyQt-Fluent-Widgets-Gallery/app/config/config.json
+
+# JSON Test files
+test/json_test/build/
+test/json_test/_internal/
+
+# Local Python environment
+.venv/Lib/site-packages/
+.venv/pyvenv.cfg
+
+# Logs, temporary, and other files
+*.log
+*.tmp
+*.bak
