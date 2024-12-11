@@ -78,16 +78,7 @@ def load_json_variables(file_path):
     返回:
     包含 JSON 內容的字典
     '''
-    # 獲取正確的資源路徑
-    if hasattr(sys, '_MEIPASS'):
-        # 如果在打包環境中運行，使用 _MEIPASS
-        base_path = sys._MEIPASS
-    else:
-        # 否則使用當前工作目錄
-        base_path = os.path.abspath(".")
-
-    # 組合完整的文件路徑
-    full_path = os.path.join(base_path, file_path)
+    full_path = get_resource_path(file_path)
 
     with open(full_path, 'r', encoding='utf-8') as file:
         data = json.load(file)
@@ -120,19 +111,25 @@ def Click_step_by_step(step_array):
     # 依序尋找並點擊每個 Step[Y] 對應的圖片
     for image_path in step_array:
         print(f"正在尋找並點擊: {image_path}")
-        # 使用 wait_until_image 函式尋找圖片
         location = match_template(image_path)
         if location:
-            # 如果找到圖片，點擊該位置
-            pyautogui.click(location)
+            pyautogui.click(location, button='left')
             print(f"已點擊: {image_path}")
         else:
             print(f"未找到: {image_path}")
 
+def get_resource_path(relative_path):
+    """獲取資源文件的正確路徑"""
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
+
 # 連接信號到槽函數
 def Start_ON():
+    # 使用 get_resource_path 來獲取 sv.json 的正確路徑
+    json_path = get_resource_path('test/json_test/sv.json')
     # 導入 sv.json 的變數
-    json_variables = load_json_variables('test\\json_test\\sv.json')
+    json_variables = load_json_variables(json_path)
     max_step_value = 0
     print("Start")
     
