@@ -6,7 +6,6 @@ import json
 import time
 import cv2
 import pyautogui
-import threading
 from PySide6.QtWidgets import QApplication
 from PIL import Image
 

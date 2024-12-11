@@ -22,7 +22,6 @@ test/PyQt-Fluent-Widgets-Gallery/app/config/config.json
 
 # JSON Test files
 test/json_test/build/
-test/json_test/dist/test/_internal/
 
 # Local Python environment
 .venv/Lib/site-packages/
