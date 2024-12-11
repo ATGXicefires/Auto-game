@@ -78,7 +78,18 @@ def load_json_variables(file_path):
     返回:
     包含 JSON 內容的字典
     '''
-    with open(file_path, 'r', encoding='utf-8') as file:
+    # 獲取正確的資源路徑
+    if hasattr(sys, '_MEIPASS'):
+        # 如果在打包環境中運行，使用 _MEIPASS
+        base_path = sys._MEIPASS
+    else:
+        # 否則使用當前工作目錄
+        base_path = os.path.abspath(".")
+
+    # 組合完整的文件路徑
+    full_path = os.path.join(base_path, file_path)
+
+    with open(full_path, 'r', encoding='utf-8') as file:
         data = json.load(file)
     
     return data

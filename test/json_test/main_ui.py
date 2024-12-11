@@ -4,7 +4,7 @@ import shutil
 import json
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QFileDialog, QListWidget, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QSlider, QMenu, QLineEdit, QMessageBox, QGraphicsView, QGraphicsScene, QStyle, QStyleOptionSlider, QGraphicsPixmapItem
 from PySide6.QtGui import QPixmap, QIntValidator, QPainter, QFont, QPen
-from PySide6.QtCore import Qt, Signal  # 確保這裡有 Signal
+from PySide6.QtCore import Qt, Signal
 
 class ZoomSlider(QSlider):
     def __init__(self, orientation, parent=None):
@@ -156,10 +156,16 @@ class MainWindow(QMainWindow):
 
     def clear_json_file(self):
         # 清空 JSON 檔案並設置為全空
-        json_path = "test/json_test/sv.json"
+        json_path = self.get_resource_path("test/json_test/sv.json")
         with open(json_path, 'w', encoding='utf-8') as f:
             json.dump({}, f, ensure_ascii=False, indent=4)  # 設置為空字典
         print(f"Cleared {json_path} and set to empty")
+
+    def get_resource_path(self, relative_path):
+        """獲取資源文件的正確路徑"""
+        if hasattr(sys, '_MEIPASS'):
+            return os.path.join(sys._MEIPASS, relative_path)
+        return os.path.join(os.path.abspath("."), relative_path)
 
     def on_button_click(self):
         self.handle_file_selection()
@@ -169,20 +175,18 @@ class MainWindow(QMainWindow):
         file_paths, _ = QFileDialog.getOpenFileNames(self, "Select Images", "", "Images (*.png *.xpm *.jpg *.jpeg *.bmp)")
         
         if file_paths:
-            # 確保目標資料夾存在
-            target_dir = "test/json_test/cache"
+            target_dir = self.get_resource_path("test/json_test/cache")
             os.makedirs(target_dir, exist_ok=True)
             
-            # 讀取現有的 JSON 資料
-            json_path = "test/json_test/sv.json"
+            json_path = self.get_resource_path("test/json_test/sv.json")
             if os.path.exists(json_path):
                 with open(json_path, 'r', encoding='utf-8') as f:
                     try:
                         data = json.load(f)
                         if not isinstance(data, dict):
-                            data = {}  # 如果不是字典，重置為空字典
+                            data = {}
                     except json.JSONDecodeError:
-                        data = {}  # 如果 JSON 解析失敗，重置為空字典
+                        data = {}
             else:
                 data = {}
 
@@ -217,9 +221,7 @@ class MainWindow(QMainWindow):
             print(f"Paths saved to {json_path}")
 
     def display_image(self, item):
-        # 顯示選中的圖片
-        # 需要從 JSON 中獲取完整路徑
-        json_path = "test/json_test/sv.json"
+        json_path = self.get_resource_path("test/json_test/sv.json")
         with open(json_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         
@@ -288,8 +290,7 @@ class MainWindow(QMainWindow):
             self.remove_image_from_json(image_name)
 
     def remove_image_from_json(self, image_name):
-        # 從 JSON 中刪除圖片
-        json_path = "test/json_test/sv.json"
+        json_path = self.get_resource_path("test/json_test/sv.json")
         with open(json_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
 
@@ -311,7 +312,7 @@ class MainWindow(QMainWindow):
     def update_json_with_input(self):
         # 更新 JSON 文件中的 Step[Y] 值
         if self.current_image_key:
-            json_path = "test/json_test/sv.json"
+            json_path = self.get_resource_path("test/json_test/sv.json")
             with open(json_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
 
@@ -338,7 +339,7 @@ class MainWindow(QMainWindow):
 
     def display_sorted_images(self):
         # 讀取 JSON 檔案並按 Step[Y] 排序顯示圖片
-        json_path = "test/json_test/sv.json"
+        json_path = self.get_resource_path("test/json_test/sv.json")
         with open(json_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
 
@@ -379,7 +380,7 @@ class MainWindow(QMainWindow):
 
     def clear_steps(self):
         # 清空 JSON 檔案中的 Step[Y] 條目，保留 Img[X] 條目
-        json_path = "test/json_test/sv.json"
+        json_path = self.get_resource_path("test/json_test/sv.json")
         if os.path.exists(json_path):
             with open(json_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
