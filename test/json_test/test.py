@@ -78,7 +78,9 @@ def load_json_variables(file_path):
     返回:
     包含 JSON 內容的字典
     '''
-    with open(file_path, 'r', encoding='utf-8') as file:
+    full_path = get_resource_path(file_path)
+
+    with open(full_path, 'r', encoding='utf-8') as file:
         data = json.load(file)
     
     return data
@@ -109,19 +111,25 @@ def Click_step_by_step(step_array):
     # 依序尋找並點擊每個 Step[Y] 對應的圖片
     for image_path in step_array:
         print(f"正在尋找並點擊: {image_path}")
-        # 使用 wait_until_image 函式尋找圖片
         location = match_template(image_path)
         if location:
-            # 如果找到圖片，點擊該位置
-            pyautogui.click(location)
+            pyautogui.click(location, button='left')
             print(f"已點擊: {image_path}")
         else:
             print(f"未找到: {image_path}")
 
+def get_resource_path(relative_path):
+    """獲取資源文件的正確路徑"""
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
+
 # 連接信號到槽函數
 def Start_ON():
+    # 使用 get_resource_path 來獲取 sv.json 的正確路徑
+    json_path = get_resource_path('test/json_test/sv.json')
     # 導入 sv.json 的變數
-    json_variables = load_json_variables('test\\json_test\\sv.json')
+    json_variables = load_json_variables(json_path)
     max_step_value = 0
     print("Start")
     
@@ -146,7 +154,26 @@ def Start_ON():
     # 呼叫 Click_step_by_step 並傳遞 step_array
     Click_step_by_step(step_array)
 
+def ensure_cache_directory():
+    cache_path = get_resource_path('test/json_test/cache')
+    if not os.path.exists(cache_path):
+        os.makedirs(cache_path)
+        print(f"創建了 cache 資料夾: {cache_path}")
+
+def ensure_sv_json():
+    json_path = get_resource_path('test/json_test/sv.json')
+    if not os.path.exists(json_path):
+        # 創建一個空的 JSON 文件
+        with open(json_path, 'w', encoding='utf-8') as f:
+            json.dump({}, f, ensure_ascii=False, indent=4)
+        print(f"創建了 sv.json 文件: {json_path}")
+
 if __name__ == "__main__":
+    # 確保 cache 資料夾存在
+    ensure_cache_directory()
+    # 確保 sv.json 文件存在
+    ensure_sv_json()
+    
     # 創建 QApplication 實例
     app = QApplication(sys.argv)
     # 創建 MainWindow 的實例
