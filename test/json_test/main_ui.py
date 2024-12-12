@@ -68,6 +68,14 @@ class MainWindow(QMainWindow):
         button1.clicked.connect(self.on_button_click)
         left_layout.addWidget(button1)
 
+        # 添加 "清理緩存" 按鈕
+        clear_cache_button = QPushButton("清理緩存", self)
+        clear_cache_button.setFixedWidth(fixed_width)  # 設置按鈕寬度
+        clear_cache_button.setFixedHeight(50)  # 設置按鈕高度
+        clear_cache_button.setFont(QFont("Arial", 14))  # 設置字體大小
+        clear_cache_button.clicked.connect(self.clear_cache)
+        left_layout.addWidget(clear_cache_button)
+
         # 添加 "清除步驟" 按鈕
         clear_steps_button = QPushButton("清除已設置步驟", self)
         clear_steps_button.setFixedWidth(fixed_width)  # 設置按鈕寬度
@@ -83,6 +91,15 @@ class MainWindow(QMainWindow):
         preview_button.setFont(QFont("Arial", 14))  # 設置字體大小
         preview_button.clicked.connect(self.on_preview_button_click)
         left_layout.addWidget(preview_button)
+
+        # 添加模式選擇開關
+        self.mode_button = QPushButton("模式: Windows", self)
+        self.mode_button.setFixedWidth(fixed_width)  # 設置按鈕寬度
+        self.mode_button.setFixedHeight(50)  # 設置按鈕高度
+        self.mode_button.setFont(QFont("Arial", 14))  # 設置字體大小
+        self.mode_button.setCheckable(True)  # 設置按鈕為可切換狀態
+        self.mode_button.clicked.connect(self.toggle_mode)
+        left_layout.addWidget(self.mode_button)
 
         # 添加 "Start" 按鈕
         start_button = QPushButton("程式開始", self)
@@ -394,6 +411,49 @@ class MainWindow(QMainWindow):
             with open(json_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=4)
             print("所有 Step[Y] 條目已清除")
+
+    def clear_cache(self):
+        """清理 cache 資料夾中的所有圖片"""
+        cache_path = self.get_resource_path("test/json_test/cache")
+        
+        # 確認對話框
+        reply = QMessageBox.question(
+            self,
+            "確認清理",
+            "確定要清理所有已上傳的圖片嗎？\n此操作無法撤銷。",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            try:
+                # 清空 cache 資料夾中的所有文件
+                for filename in os.listdir(cache_path):
+                    file_path = os.path.join(cache_path, filename)
+                    if os.path.isfile(file_path):
+                        os.remove(file_path)
+                
+                # 清空圖片列表
+                self.image_list_widget.clear()
+                
+                # 清空場景
+                self.graphics_scene.clear()
+                
+                # 清空 JSON 檔案
+                self.clear_json_file()
+                
+                QMessageBox.information(self, "完成", "緩存已清理完成！")
+                print("緩存已清理完成")
+                
+            except Exception as e:
+                QMessageBox.warning(self, "錯誤", f"清理緩存時發生錯誤：{str(e)}")
+                print(f"清理緩存時發生錯誤：{str(e)}")
+
+    def toggle_mode(self):
+        if self.mode_button.isChecked():
+            self.mode_button.setText("模式: ADB")
+        else:
+            self.mode_button.setText("模式: Windows")
 
 def main():
     app = QApplication(sys.argv)
