@@ -125,6 +125,11 @@ def get_resource_path(relative_path):
 
 # 連接信號到槽函數
 def Start_ON():
+    # 獲取當前模式
+    is_adb_mode = main_window.mode_button.isChecked()
+    mode_text = "ADB" if is_adb_mode else "Windows"
+    print(f"當前模式: {mode_text}")
+
     # 使用 get_resource_path 來獲取 sv.json 的正確路徑
     json_path = get_resource_path('test/json_test/sv.json')
     # 導入 sv.json 的變數
@@ -150,8 +155,13 @@ def Start_ON():
     for index in range(max_step_value):
         print(f"step_array[{index}]: {step_array[index]}")
 
-    # 呼叫 Click_step_by_step 並傳遞 step_array
-    Click_step_by_step(step_array)
+    # 根據模式選擇不同的點擊函數
+    if is_adb_mode:
+        # TODO: 實現 ADB 模式的點擊函數
+        print("ADB 模式尚未實現")
+    else:
+        # 使用原有的 Windows 模式點擊函數
+        Click_step_by_step(step_array)
 
 def ensure_cache_directory():
     cache_path = get_resource_path('test/json_test/cache')

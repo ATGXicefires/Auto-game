@@ -92,6 +92,15 @@ class MainWindow(QMainWindow):
         preview_button.clicked.connect(self.on_preview_button_click)
         left_layout.addWidget(preview_button)
 
+        # 添加模式選擇開關
+        self.mode_button = QPushButton("模式: Windows", self)
+        self.mode_button.setFixedWidth(fixed_width)  # 設置按鈕寬度
+        self.mode_button.setFixedHeight(50)  # 設置按鈕高度
+        self.mode_button.setFont(QFont("Arial", 14))  # 設置字體大小
+        self.mode_button.setCheckable(True)  # 設置按鈕為可切換狀態
+        self.mode_button.clicked.connect(self.toggle_mode)
+        left_layout.addWidget(self.mode_button)
+
         # 添加 "Start" 按鈕
         start_button = QPushButton("程式開始", self)
         start_button.setFixedWidth(fixed_width)  # 設置按鈕寬度
@@ -439,6 +448,12 @@ class MainWindow(QMainWindow):
             except Exception as e:
                 QMessageBox.warning(self, "錯誤", f"清理緩存時發生錯誤：{str(e)}")
                 print(f"清理緩存時發生錯誤：{str(e)}")
+
+    def toggle_mode(self):
+        if self.mode_button.isChecked():
+            self.mode_button.setText("模式: ADB")
+        else:
+            self.mode_button.setText("模式: Windows")
 
 def main():
     app = QApplication(sys.argv)
