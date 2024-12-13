@@ -20,7 +20,7 @@ def apply_light_theme():
     QPushButton#viewButton:checked {
         background-color: black;
         color: white;
-        border-bottom: 2px solid blue;
+        border-bottom: 2px;
     }
     QFrame {
         background-color: #d0d0d0;
