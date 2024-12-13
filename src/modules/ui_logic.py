@@ -8,7 +8,7 @@ from PySide6.QtCore import Qt, Signal
 
 def clear_json_file(main_window):
     # 清空 JSON 檔案並設置為全空
-    json_path = get_resource_path("test/json_test/sv.json")
+    json_path = get_resource_path("SaveData/sv.json")
     with open(json_path, 'w', encoding='utf-8') as f:
         json.dump({}, f, ensure_ascii=False, indent=4)  # 設置為空字典
     print(f"Cleared {json_path} and set to empty")
@@ -24,10 +24,10 @@ def handle_file_selection(main_window):
     file_paths, _ = QFileDialog.getOpenFileNames(main_window, "Select Images", "", "Images (*.png *.xpm *.jpg *.jpeg *.bmp)")
     
     if file_paths:
-        target_dir = get_resource_path("test/json_test/cache")
+        target_dir = get_resource_path("detect")
         os.makedirs(target_dir, exist_ok=True)
         
-        json_path = get_resource_path("test/json_test/sv.json")
+        json_path = get_resource_path("SaveData/sv.json")
         if os.path.exists(json_path):
             with open(json_path, 'r', encoding='utf-8') as f:
                 try:
@@ -72,7 +72,7 @@ def handle_file_selection(main_window):
 def display_image(main_window, item):
     """顯示選中的圖片"""
     image_name = item.text()
-    json_path = get_resource_path("test/json_test/sv.json")
+    json_path = get_resource_path("SaveData/sv.json")
     with open(json_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
@@ -85,9 +85,9 @@ def display_image(main_window, item):
             main_window.current_image_key = key  # 更新當前圖片的鍵
             break
 
-def clear_cache(main_window):
-    """清理 cache 資料夾中的所有圖片"""
-    cache_path = get_resource_path("test/json_test/cache")
+def clear_detect(main_window):
+    """清理 detect 資料夾中的所有圖片"""
+    detect_path = get_resource_path("detect")
     
     # 確認對話框
     reply = QMessageBox.question(
@@ -100,9 +100,9 @@ def clear_cache(main_window):
     
     if reply == QMessageBox.Yes:
         try:
-            # 清空 cache 資料夾中的所有文件
-            for filename in os.listdir(cache_path):
-                file_path = os.path.join(cache_path, filename)
+            # 清空 detect 資料夾中的所有文件
+            for filename in os.listdir(detect_path):
+                file_path = os.path.join(detect_path, filename)
                 if os.path.isfile(file_path):
                     os.remove(file_path)
             
@@ -115,16 +115,16 @@ def clear_cache(main_window):
             # 清空 JSON 檔案
             clear_json_file(main_window)
             
-            QMessageBox.information(main_window, "完成", "緩存已清理完成！")
-            print("緩存已清理完成")
+            QMessageBox.information(main_window, "完成", "已上傳的圖片已清理完成！")
+            print("已上傳的圖片已清理完成")
             
         except Exception as e:
-            QMessageBox.warning(main_window, "錯誤", f"清理緩存時發生錯誤：{str(e)}")
-            print(f"清理緩存時發生錯誤：{str(e)}")
+            QMessageBox.warning(main_window, "錯誤", f"清理已上傳的圖片時發生錯誤：{str(e)}")
+            print(f"清理已上傳的圖片時發生錯誤：{str(e)}")
 
 def clear_steps(main_window):
     # 清空 JSON 檔案中的 Step[Y] 條目，保留 Img[X] 條目
-    json_path = get_resource_path("test/json_test/sv.json")
+    json_path = get_resource_path("SaveData/sv.json")
     if os.path.exists(json_path):
         with open(json_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -146,7 +146,7 @@ def on_preview_button_click(main_window):
 
 def display_sorted_images(main_window):
     # 讀取 JSON 檔案並按 Step[Y] 排序顯示圖片
-    json_path = get_resource_path("test/json_test/sv.json")
+    json_path = get_resource_path("SaveData/sv.json")
     with open(json_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
@@ -209,7 +209,7 @@ def delete_selected_image(main_window):
         remove_image_from_json(main_window, image_name)
 
 def remove_image_from_json(main_window, image_name):
-    json_path = get_resource_path("test/json_test/sv.json")
+    json_path = get_resource_path("SaveData/sv.json")
     with open(json_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
@@ -231,7 +231,7 @@ def remove_image_from_json(main_window, image_name):
 def update_json_with_input(main_window):
     # 更新 JSON 文件中的 Step[Y] 值
     if main_window.current_image_key:
-        json_path = get_resource_path("test/json_test/sv.json")
+        json_path = get_resource_path("SaveData/sv.json")
         with open(json_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
 

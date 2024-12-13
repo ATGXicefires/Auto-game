@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import QMainWindow, QPushButton, QListWidget, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QSlider, QLineEdit, QGraphicsView, QGraphicsScene
 from PySide6.QtGui import QFont, QPixmap, QPainter, QIntValidator
 from PySide6.QtCore import Qt, Signal
-from ui_logic import handle_file_selection, clear_json_file, clear_cache, clear_steps, on_preview_button_click, display_sorted_images, on_zoom_slider_change, show_context_menu, delete_selected_image, update_json_with_input, toggle_mode, display_image
+from ui_logic import handle_file_selection, clear_json_file, clear_steps, on_preview_button_click, display_sorted_images, on_zoom_slider_change, show_context_menu, delete_selected_image, update_json_with_input, toggle_mode, display_image, clear_detect
 from functions import get_resource_path, load_json_variables, get_max_step_value, Click_step_by_step
 
 class MainWindow(QMainWindow):
@@ -33,13 +33,13 @@ class MainWindow(QMainWindow):
         button1.clicked.connect(self.on_button_click)
         left_layout.addWidget(button1)
 
-        # 添加 "清理緩存" 按鈕
-        clear_cache_button = QPushButton("清理緩存", self)
-        clear_cache_button.setFixedWidth(fixed_width)  # 設置按鈕寬度
-        clear_cache_button.setFixedHeight(50)  # 設置按鈕高度
-        clear_cache_button.setFont(QFont("Arial", 14))  # 設置字體大小
-        clear_cache_button.clicked.connect(self.clear_cache)
-        left_layout.addWidget(clear_cache_button)
+        # 添加 "清理圖片" 按鈕
+        clear_detect_button = QPushButton("清理圖片", self)
+        clear_detect_button.setFixedWidth(fixed_width)  # 設置按鈕寬度
+        clear_detect_button.setFixedHeight(50)  # 設置按鈕高度
+        clear_detect_button.setFont(QFont("Arial", 14))  # 設置字體大小
+        clear_detect_button.clicked.connect(self.clear_detect)
+        left_layout.addWidget(clear_detect_button)
 
         # 添加 "清除步驟" 按鈕
         clear_steps_button = QPushButton("清除已設置步驟", self)
@@ -85,7 +85,7 @@ class MainWindow(QMainWindow):
         # 添加滑桿
         self.zoom_slider = QSlider(Qt.Horizontal, self)
         self.zoom_slider.setFixedWidth(fixed_width)  # 設置滑桿寬度
-        self.zoom_slider.setRange(10, 200)  # 設定縮放範��為10%到200%
+        self.zoom_slider.setRange(10, 200)  # 設定縮放範圍為10%到200%
         self.zoom_slider.setValue(75)  # 預設值為75%
         self.zoom_slider.valueChanged.connect(self.on_zoom_slider_change)
         left_layout.addWidget(self.zoom_slider)
@@ -110,7 +110,7 @@ class MainWindow(QMainWindow):
 
         # 創建一個水平佈局來包含標籤和輸入框
         input_layout = QHBoxLayout()
-        input_layout.setSpacing(0)  # 設置間��為0，讓輸入框緊貼在標籤後面
+        input_layout.setSpacing(0)  # 設置間距為0，讓輸入框緊貼在標籤後面
         input_layout.addWidget(label, alignment=Qt.AlignLeft)  # 添加標籤到水平佈局並靠左對齊
         input_layout.addWidget(self.input_box, alignment=Qt.AlignLeft)  # 添加輸入框到水平佈局並靠左對齊
 
@@ -139,8 +139,8 @@ class MainWindow(QMainWindow):
     def on_button_click(self):
         handle_file_selection(self)
 
-    def clear_cache(self):
-        clear_cache(self)
+    def clear_detect(self):
+        clear_detect(self)
 
     def clear_steps(self):
         clear_steps(self)
@@ -174,7 +174,7 @@ class MainWindow(QMainWindow):
         print(f"當前模式: {mode_text}")
 
         # 使用 get_resource_path 來獲取 sv.json 的正確路徑
-        json_path = get_resource_path('test/json_test/sv.json')
+        json_path = get_resource_path('SaveData/sv.json')
         # 導入 sv.json 的變數
         json_variables = load_json_variables(json_path)
         max_step_value = 0
@@ -208,5 +208,8 @@ class MainWindow(QMainWindow):
 
     def display_image(self, item):
         display_image(self, item)
+
+    def clear_json_file(self):
+        clear_json_file(self)  # 確保傳遞 self 以便使用 get_resource_path
 
     # 其他方法的實現

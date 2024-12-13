@@ -8,13 +8,19 @@ from PIL import Image
 import time
 
 def ensure_cache_directory():
-    cache_path = get_resource_path('test/json_test/cache')
+    cache_path = get_resource_path('cache')
     if not os.path.exists(cache_path):
         os.makedirs(cache_path)
         print(f"創建了 cache 資料夾: {cache_path}")
 
+def ensure_detect_directory():
+    detect_path = get_resource_path('detect')
+    if not os.path.exists(detect_path):
+        os.makedirs(detect_path)
+        print(f"創建了 detect 資料夾: {detect_path}")
+
 def ensure_sv_json():
-    json_path = get_resource_path('test/json_test/sv.json')
+    json_path = get_resource_path('SaveData/sv.json')
     if not os.path.exists(json_path):
         # 創建一個空的 JSON 文件 
         with open(json_path, 'w', encoding='utf-8') as f:
