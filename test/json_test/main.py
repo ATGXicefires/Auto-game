@@ -172,7 +172,7 @@ def ensure_cache_directory():
 def ensure_sv_json():
     json_path = get_resource_path('test/json_test/sv.json')
     if not os.path.exists(json_path):
-        # 創建一個空的 JSON 文件 :>
+        # 創建一個空的 JSON 文件 
         with open(json_path, 'w', encoding='utf-8') as f:
             json.dump({}, f, ensure_ascii=False, indent=4)
         print(f"創建了 sv.json 文件: {json_path}")
