@@ -21,6 +21,9 @@ def ensure_detect_directory():
 
 def ensure_sv_json():
     json_path = get_resource_path('SaveData/sv.json')
+    directory = os.path.dirname(json_path)
+    if not os.path.exists(directory):
+        os.makedirs(directory)  # 確保目錄存在
     if not os.path.exists(json_path):
         # 創建一個空的 JSON 文件 
         with open(json_path, 'w', encoding='utf-8') as f:

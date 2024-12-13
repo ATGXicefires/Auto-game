@@ -31,3 +31,6 @@ test/json_test/build/
 *.log
 *.tmp
 *.bak
+
+# package
+build/
