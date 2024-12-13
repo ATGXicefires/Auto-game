@@ -93,7 +93,7 @@ def clear_detect(main_window):
     reply = QMessageBox.question(
         main_window,
         "確認清理",
-        "確定要清理所有已上傳的圖片嗎？\n此操作無法撤銷。",
+        "確定��清理所有已上傳的圖片嗎？\n此操作無法撤銷。",
         QMessageBox.Yes | QMessageBox.No,
         QMessageBox.No
     )
@@ -206,9 +206,9 @@ def delete_selected_image(main_window):
     if selected_item:
         image_name = selected_item.text()
         main_window.image_list_widget.takeItem(main_window.image_list_widget.row(selected_item))
-        remove_image_from_json(main_window, image_name)
+        remove_image_from_json_and_disk(main_window, image_name)
 
-def remove_image_from_json(main_window, image_name):
+def remove_image_from_json_and_disk(main_window, image_name):
     json_path = get_resource_path("SaveData/sv.json")
     with open(json_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
@@ -221,7 +221,14 @@ def remove_image_from_json(main_window, image_name):
             break
 
     if key_to_remove:
+        # 刪除 JSON 中的條目
         del data[key_to_remove]
+
+        # 刪除 detect 資料夾中的文件
+        file_path = get_resource_path(path)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            print(f"Deleted {file_path} from disk")
 
         # 更新 JSON 文件
         with open(json_path, 'w', encoding='utf-8') as f:
@@ -256,3 +263,6 @@ def toggle_mode(main_window):
         main_window.mode_button.setText("模式: ADB")
     else:
         main_window.mode_button.setText("模式: Windows")
+    
+    # 保存當前模式到 setting.json
+    main_window.save_mode_setting()

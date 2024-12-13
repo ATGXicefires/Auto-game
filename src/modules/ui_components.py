@@ -2,7 +2,9 @@ from PySide6.QtWidgets import QMainWindow, QPushButton, QListWidget, QLabel, QVB
 from PySide6.QtGui import QFont, QPixmap, QPainter, QIntValidator
 from PySide6.QtCore import Qt, Signal
 from ui_logic import handle_file_selection, clear_json_file, clear_steps, on_preview_button_click, display_sorted_images, on_zoom_slider_change, show_context_menu, delete_selected_image, update_json_with_input, toggle_mode, display_image, clear_detect
-from functions import get_resource_path, load_json_variables, get_max_step_value, Click_step_by_step
+from functions import get_resource_path, load_json_variables, get_max_step_value, Click_step_by_step, initialize_setting_file
+import os
+import json
 
 class MainWindow(QMainWindow):
     start_signal = Signal()  # 確保信號正確定義
@@ -135,6 +137,7 @@ class MainWindow(QMainWindow):
         self.current_image_key = None  # 用於存儲當前顯示圖片的鍵
 
         self.display_sorted_images()  # 在初始化時顯示排序後的圖片
+        self.load_mode_setting()
 
     def on_button_click(self):
         handle_file_selection(self)
@@ -164,7 +167,11 @@ class MainWindow(QMainWindow):
         update_json_with_input(self)
 
     def toggle_mode(self):
-        toggle_mode(self)
+        if self.mode_button.isChecked():
+            self.mode_button.setText("模式: ADB")
+        else:
+            self.mode_button.setText("模式: Windows")
+        self.save_mode_setting()  # 確保這裡調用的是 MainWindow 的方法
 
     def on_start_button_click(self):
         # 這裡是 Start_ON 的邏輯
@@ -211,5 +218,27 @@ class MainWindow(QMainWindow):
 
     def clear_json_file(self):
         clear_json_file(self)  # 確保傳遞 self 以便使用 get_resource_path
+
+    def load_mode_setting(self):
+        setting_path = initialize_setting_file()  # 確保文件已初始化
+        with open(setting_path, 'r', encoding='utf-8') as f:
+            try:
+                settings = json.load(f)
+                mode = settings.get('detect_mode', 'Windows')
+                self.mode_button.setChecked(mode == 'ADB')
+                self.mode_button.setText(f"模式: {mode}")
+            except json.JSONDecodeError:
+                # 如果文件格式不正確，重新初始化
+                initialize_setting_file()
+                self.mode_button.setChecked(False)
+                self.mode_button.setText("模式: Windows")
+
+    def save_mode_setting(self):
+        setting_path = get_resource_path('cache/setting.json')
+        mode = "ADB" if self.mode_button.isChecked() else "Windows"
+        settings = {'detect_mode': mode}
+        with open(setting_path, 'w', encoding='utf-8') as f:
+            json.dump(settings, f, ensure_ascii=False, indent=4)
+        print(f"模式已保存: {mode}")
 
     # 其他方法的實現

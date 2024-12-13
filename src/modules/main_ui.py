@@ -3,10 +3,40 @@ from PySide6.QtGui import QIntValidator
 from ui_components import MainWindow
 from ui_logic import clear_json_file, handle_file_selection
 from functions import get_resource_path, load_json_variables, get_max_step_value, Click_step_by_step
+import json
+import os
 
 # 在 MainWindow 類別中使用這些邏輯方法
 class MainWindow(QMainWindow):
     # ... existing code ...
+
+    def __init__(self):
+        super(MainWindow, self).__init__()
+        # ... existing code ...
+
+        # 在初始化時讀取模式設置
+        self.load_mode_setting()
+
+    def load_mode_setting(self):
+        setting_path = get_resource_path('cache/setting.json')
+        if os.path.exists(setting_path):
+            with open(setting_path, 'r', encoding='utf-8') as f:
+                settings = json.load(f)
+                mode = settings.get('detect_mode', 'Windows')
+                self.mode_button.setChecked(mode == 'ADB')
+                self.mode_button.setText(f"模式: {mode}")
+        else:
+            # 如果文件不存在，默認設置為 Windows 模式
+            self.mode_button.setChecked(False)
+            self.mode_button.setText("模式: Windows")
+
+    def save_mode_setting(self):
+        setting_path = get_resource_path('cache/setting.json')
+        mode = "ADB" if self.mode_button.isChecked() else "Windows"
+        settings = {'detect_mode': mode}
+        with open(setting_path, 'w', encoding='utf-8') as f:
+            json.dump(settings, f, ensure_ascii=False, indent=4)
+        print(f"模式已保存: {mode}")
 
     def on_button_click(self):
         handle_file_selection(self)
@@ -20,6 +50,9 @@ class MainWindow(QMainWindow):
         is_adb_mode = self.mode_button.isChecked()
         mode_text = "ADB" if is_adb_mode else "Windows"
         print(f"當前模式: {mode_text}")
+
+        # 保存當前模式到 setting.json
+        self.save_mode_setting()
 
         # 使用 get_resource_path 來獲取 sv.json 的正確路徑
         json_path = get_resource_path('test/json_test/sv.json')
@@ -53,5 +86,13 @@ class MainWindow(QMainWindow):
         else:
             # 使用原有的 Windows 模式點擊函數
             Click_step_by_step(step_array)
+
+    def toggle_mode(self):
+        if self.mode_button.isChecked():
+            self.mode_button.setText("模式: ADB")
+        else:
+            self.mode_button.setText("模式: Windows")
+        # 每次切換模式時保存設置
+        self.save_mode_setting()
 
     # 其他方法的實現

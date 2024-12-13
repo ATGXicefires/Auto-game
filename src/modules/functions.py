@@ -27,6 +27,15 @@ def ensure_sv_json():
             json.dump({}, f, ensure_ascii=False, indent=4)
         print(f"創建了 sv.json 文件: {json_path}")
 
+def initialize_setting_file():
+    json_path = get_resource_path('cache/setting.json')
+    if not os.path.exists(json_path) or os.stat(json_path).st_size == 0:
+        # 初始化 setting.json 文件
+        with open(json_path, 'w', encoding='utf-8') as f:
+            json.dump({"detect_mode": "Windows"}, f, ensure_ascii=False, indent=4)
+        print(f"初始化了 setting.json 文件: {json_path}")
+    return json_path
+
 def get_resource_path(relative_path):
     """獲取資源文件的正確路徑"""
     if hasattr(sys, '_MEIPASS'):
