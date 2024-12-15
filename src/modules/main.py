@@ -1,12 +1,14 @@
 import sys
 from PySide6.QtWidgets import QApplication
 from main_view import MainWindow
-from functions import ensure_cache_directory, ensure_sv_json, ensure_detect_directory
+from functions import ensure_cache_directory, ensure_sv_json, ensure_detect_directory,clear_sv_json
 
 if __name__ == "__main__":
     # 確保 cache & detect 資料夾存在
     ensure_cache_directory()
     ensure_detect_directory()
+    # 清空 sv.json 文件
+    clear_sv_json()
     # 確保 sv.json 文件存在
     ensure_sv_json()
     

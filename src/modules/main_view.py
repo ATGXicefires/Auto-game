@@ -74,7 +74,7 @@ class MainWindow(QMainWindow):
         clear_steps_button.setFixedWidth(fixed_width)  # 設置按鈕寬度
         clear_steps_button.setFixedHeight(50)  # 設置按鈕高度
         clear_steps_button.setFont(QFont("Arial", 14))  # 設置字體大小
-        clear_steps_button.clicked.connect(self.clear_steps)
+        clear_steps_button.clicked.connect(lambda: clear_steps(self))
         left_layout.addWidget(clear_steps_button)
 
         # 添加 "流程預覽" 按鈕
@@ -204,21 +204,21 @@ class MainWindow(QMainWindow):
         # 獲取當前模式
         is_adb_mode = self.mode_button.isChecked()
         mode_text = "ADB" if is_adb_mode else "Windows"
-        print(f"當前模式: {mode_text}")
+        self.log_view.append_log(f"當前模式: {mode_text}")
 
         # 使用 get_resource_path 來獲取 sv.json 的正確路徑
         json_path = get_resource_path('SaveData/sv.json')
-        # 導��� sv.json 的變數
+        # 導入 sv.json 的變數
         json_variables = load_json_variables(json_path)
         max_step_value = 0
-        print("Start")
+        self.log_view.append_log("Start")
         
         # 最小化主窗口
         self.showMinimized()
         
         # 找出 "Step[Y]" 的最大 Y 值
         max_step_value = get_max_step_value(json_variables)
-        print(f"最大 Step[Y] 值: {max_step_value}")
+        self.log_view.append_log(f"最大 Step[Y] 值: {max_step_value}")
 
         # 將 Step[Y] 的內容值存入 step_array
         step_array = []
@@ -229,15 +229,13 @@ class MainWindow(QMainWindow):
         
         # 打印出 step_array 中的所有值
         for index in range(max_step_value):
-            print(f"step_array[{index}]: {step_array[index]}")
+            self.log_view.append_log(f"step_array[{index}]: {step_array[index]}")
 
         # 根據模式選擇不同的點擊函數
         if is_adb_mode:
-            # TODO: 實現 ADB 模式的點擊函數
-            print("ADB 模式尚未實現")
+            self.log_view.append_log("ADB 模式尚未實現")
         else:
-            # 使用原有的 Windows 模式點擊函數
-            Click_step_by_step(step_array)
+            Click_step_by_step(step_array, self.log_view)
 
     def display_image(self, item):
         display_image(self, item)
@@ -265,7 +263,7 @@ class MainWindow(QMainWindow):
         settings = {'detect_mode': mode}
         with open(setting_path, 'w', encoding='utf-8') as f:
             json.dump(settings, f, ensure_ascii=False, indent=4)
-        print(f"模式已保存: {mode}")
+        self.log_view.append_log(f"模式已保存: {mode}")
 
     def toggle_view(self):
         """切換主視圖和日誌視圖"""

@@ -226,7 +226,7 @@ def clear_detect(main_window):
             QMessageBox.warning(main_window, "錯誤", f"清理已上傳的圖片時發生錯誤：{str(e)}")
             print(f"清理已上傳的圖片時發生錯誤：{str(e)}")
 
-def clear_steps():
+def clear_steps(main_window):
     # 清空 JSON 檔案中的 Step[Y] 條目，保留 Img[X] 條目
     json_path = get_resource_path("SaveData/sv.json")
     if os.path.exists(json_path):
@@ -241,7 +241,7 @@ def clear_steps():
         # 更新 JSON 文件
         with open(json_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
-        print("所有 Step[Y] 條目已清除")
+        main_window.log_view.append_log("所有 Step[Y] 條目已清除")
 
 def on_preview_button_click(main_window):
     # 處理 "流程預覽" 按鈕的點擊事件

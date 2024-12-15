@@ -19,6 +19,13 @@ def ensure_detect_directory():
         os.makedirs(detect_path)
         print(f"創建了 detect 資料夾: {detect_path}")
 
+def clear_sv_json():
+    """清空 sv.json 文件"""
+    json_path = get_resource_path("SaveData/sv.json")
+    with open(json_path, 'w', encoding='utf-8') as f:
+        json.dump({}, f, ensure_ascii=False, indent=4)
+    print(f"Cleared {json_path}")
+
 def ensure_sv_json():
     json_path = get_resource_path('SaveData/sv.json')
     directory = os.path.dirname(json_path)
