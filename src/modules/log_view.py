@@ -1,4 +1,5 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QTextEdit
+from datetime import datetime
 
 class LogView(QWidget):
     def __init__(self, parent=None):
@@ -11,9 +12,10 @@ class LogView(QWidget):
         # 創建一個文本編輯器來顯示日誌
         self.log_text_edit = QTextEdit(self)
         self.log_text_edit.setReadOnly(True)  # 設置為只讀
-        self.log_text_edit.setStyleSheet("color: darkblue;")  # 設置字體顏色為深藍色
+        self.log_text_edit.setStyleSheet("color: lightblue;")  # 設置字體顏色為藍色
         layout.addWidget(self.log_text_edit)
         
     def append_log(self, message):
         """添加日誌信息到文本編輯器"""
-        self.log_text_edit.append(message) 
+        current_time = datetime.now().strftime("%H:%M:%S")  # 獲取當前時間，格式為 hh:mm:ss
+        self.log_text_edit.append(f"[{current_time}] {message}")

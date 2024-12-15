@@ -2,6 +2,7 @@ import sys
 from PySide6.QtWidgets import QApplication
 from main_view import MainWindow
 from functions import ensure_cache_directory, ensure_sv_json, ensure_detect_directory,clear_sv_json
+from log_view import LogView
 
 if __name__ == "__main__":
     # 確保 cache & detect 資料夾存在
