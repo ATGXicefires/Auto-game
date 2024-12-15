@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['src\\modules\\main.py','src\\modules\\functions.py','src\\modules\\main_ui.py','src\\modules\\ui_components.py','src\\modules\\ui_logic.py'],
+    ['src\\modules\\main.py','src\\modules\\functions.py','src\\modules\\ui_components.py','src\\modules\\ui_logic.py','src\\modules\\main_view.py','src\\modules\\log_view.py'],
     pathex=[],
     binaries=[],
     datas=[],

@@ -5,6 +5,110 @@ import json
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QFileDialog, QListWidget, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QSlider, QMenu, QLineEdit, QMessageBox, QGraphicsView, QGraphicsScene, QStyle, QStyleOptionSlider, QGraphicsPixmapItem
 from PySide6.QtGui import QPixmap, QIntValidator, QPainter, QFont, QPen
 from PySide6.QtCore import Qt, Signal
+from functions import get_resource_path, load_json_variables, get_max_step_value, Click_step_by_step
+from log_view import LogView
+
+# 在 MainWindow 類別中使用這些邏輯方法
+class MainWindow(QMainWindow):
+    # ... existing code ...
+
+    def __init__(self):
+        super(MainWindow, self).__init__()
+        # ... existing code ...
+
+        # 在初始化時讀取模式設置
+        self.load_mode_setting()
+
+        # 初始化日誌視圖
+        self.log_view = LogView(self)
+
+    def load_mode_setting(self):
+        setting_path = get_resource_path('cache/setting.json')
+        if os.path.exists(setting_path):
+            with open(setting_path, 'r', encoding='utf-8') as f:
+                settings = json.load(f)
+                mode = settings.get('detect_mode', 'Windows')
+                self.mode_button.setChecked(mode == 'ADB')
+                self.mode_button.setText(f"模式: {mode}")
+        else:
+            # 如果文件不存在，默認設置為 Windows 模式
+            self.mode_button.setChecked(False)
+            self.mode_button.setText("模式: Windows")
+
+    def save_mode_setting(self):
+        setting_path = get_resource_path('cache/setting.json')
+        mode = "ADB" if self.mode_button.isChecked() else "Windows"
+        settings = {'detect_mode': mode}
+        with open(setting_path, 'w', encoding='utf-8') as f:
+            json.dump(settings, f, ensure_ascii=False, indent=4)
+        print(f"模式已保存: {mode}")
+
+    def on_button_click(self):
+        handle_file_selection(self)
+
+    def clear_steps(self):
+        clear_steps(self)
+
+    def clear_json_file(self):
+        clear_json_file(self)
+
+    def on_start_button_click(self):
+        # 這裡是 Start_ON 的邏輯
+        # 獲取當前模式
+        is_adb_mode = self.mode_button.isChecked()
+        mode_text = "ADB" if is_adb_mode else "Windows"
+        self.log_view.append_log(f"當前模式: {mode_text}")
+
+        # 保存當前模式到 setting.json
+        self.save_mode_setting()
+
+        # 使用 get_resource_path 來獲取 sv.json 的正確路徑
+        json_path = get_resource_path('test/json_test/sv.json')
+        # 導入 sv.json 的變數
+        json_variables = load_json_variables(json_path)
+        max_step_value = 0
+        self.log_view.append_log("Start")
+        
+        # 最小化主窗口
+        self.showMinimized()
+        
+        # 找出 "Step[Y]" 的最大 Y 值
+        max_step_value = get_max_step_value(json_variables)
+        self.log_view.append_log(f"最大 Step[Y] 值: {max_step_value}")
+
+        # 將 Step[Y] 的內容值存入 step_array
+        step_array = []
+        for i in range(1, max_step_value + 1):
+            step_key = f"Step[{i}]"
+            if step_key in json_variables:
+                step_array.append(json_variables[step_key])
+        
+        # 打印出 step_array 中的所有值
+        for index in range(max_step_value):
+            self.log_view.append_log(f"step_array[{index}]: {step_array[index]}")
+
+        # 根據模式選擇不同的點擊函數
+        if is_adb_mode:
+            self.log_view.append_log("ADB 模式尚未實現")
+        else:
+            Click_step_by_step(step_array, self.log_view)
+
+    def toggle_mode(self):
+        if self.mode_button.isChecked():
+            self.mode_button.setText("模式: ADB")
+        else:
+            self.mode_button.setText("模式: Windows")
+        # 每次切換模式時保存設置
+        self.save_mode_setting()
+
+    def toggle_view(self):
+        """切換主視圖和日誌視圖"""
+        if self.centralWidget() == self.log_view:
+            self.setCentralWidget(self.main_widget)  # 切換回主視圖
+        else:
+            self.setCentralWidget(self.log_view)  # 切換到日誌視圖
+
+    # 其他方法的實現
 
 def clear_json_file(main_window):
     # 清空 JSON 檔案並設置為全空
@@ -93,7 +197,7 @@ def clear_detect(main_window):
     reply = QMessageBox.question(
         main_window,
         "確認清理",
-        "確定��清理所有已上傳的圖片嗎？\n此操作無法撤銷。",
+        "確定要清理所有已上傳的圖片嗎？\n此操作無法撤銷。",
         QMessageBox.Yes | QMessageBox.No,
         QMessageBox.No
     )
@@ -122,7 +226,7 @@ def clear_detect(main_window):
             QMessageBox.warning(main_window, "錯誤", f"清理已上傳的圖片時發生錯誤：{str(e)}")
             print(f"清理已上傳的圖片時發生錯誤：{str(e)}")
 
-def clear_steps(main_window):
+def clear_steps():
     # 清空 JSON 檔案中的 Step[Y] 條目，保留 Img[X] 條目
     json_path = get_resource_path("SaveData/sv.json")
     if os.path.exists(json_path):

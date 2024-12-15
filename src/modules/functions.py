@@ -84,18 +84,18 @@ def get_max_step_value(json_data):
                 continue
     return max_step
 
-def Click_step_by_step(step_array):
+def Click_step_by_step(step_array, log_view):
     # 依序尋找並點擊每個 Step[Y] 對應的圖片
     for image_path in step_array:
-        print(f"正在尋找並點擊: {image_path}")
+        log_view.append_log(f"正在尋找並點擊: {image_path}")
         location = match_template(image_path)
         if location:
             pyautogui.click(location, button='left')
-            print(f"已點擊: {image_path}")
+            log_view.append_log(f"已點擊: {image_path}")
         else:
-            print(f"未找到: {image_path}")
+            log_view.append_log(f"未找到: {image_path}")
 
-def match_template(template_path, confidence=0.9, timeout=10):
+def match_template(template_path, confidence=0.9, timeout=10, log_view=None):
     """
     在螢幕截圖中尋找模板圖像的位置。
     
@@ -105,7 +105,8 @@ def match_template(template_path, confidence=0.9, timeout=10):
     :return: 匹配位置 (x, y) 或 None
     """
     if not os.path.exists(template_path):
-        print(f"檔案不存在: {template_path}")
+        if log_view:
+            log_view.append_log(f"檔案不存在: {template_path}")
         return None
 
     def read_image_with_pil(image_path):
@@ -113,7 +114,8 @@ def match_template(template_path, confidence=0.9, timeout=10):
             pil_image = Image.open(image_path)
             return cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
         except Exception as e:
-            print(f"無法讀取影像: {e}")
+            if log_view:
+                log_view.append_log(f"無法讀取影像: {e}")
             return None
 
     start_time = time.time()
@@ -124,7 +126,8 @@ def match_template(template_path, confidence=0.9, timeout=10):
         template = read_image_with_pil(template_path)  # 使用 PIL 讀取模板圖像
 
         if template is None:
-            print("無法讀取模板圖片")
+            if log_view:
+                log_view.append_log("無法讀取模板圖片")
             return None
 
         # 執行模板匹配
@@ -137,7 +140,8 @@ def match_template(template_path, confidence=0.9, timeout=10):
             template_height, template_width = template.shape[:2]
             center_x = max_loc[0] + template_width // 2
             center_y = max_loc[1] + template_height // 2
-            print(f"找到匹配位置: {max_loc}, 匹配值: {max_val}, 中心點: ({center_x}, {center_y})")
+            if log_view:
+                log_view.append_log(f"找到匹配位置: {max_loc}, 匹配值: {max_val}, 中心點: ({center_x}, {center_y})")
 
             # 平滑移動鼠標到中心點並點擊
             pyautogui.moveTo(center_x, center_y, duration=0.5)  # duration 控制移動速度
@@ -145,11 +149,13 @@ def match_template(template_path, confidence=0.9, timeout=10):
             return (center_x, center_y)  # 返回匹配位置的中心點座標
 
         # 打印當前匹配的準確值
-        print(f"當前匹配準確值：{max_val}")
+        if log_view:
+            log_view.append_log(f"當前匹配準確值：{max_val}")
         # 每秒檢測一次
         time.sleep(1)
 
-    print("未找到匹配的影像")
+    if log_view:
+        log_view.append_log("未找到匹配的影像")
     return None
 
 # 其他函數如 match_template 等可以在這裡定義或在其他模塊中定義並導入

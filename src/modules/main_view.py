@@ -1,8 +1,9 @@
-from PySide6.QtWidgets import QMainWindow, QPushButton, QListWidget, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QSlider, QLineEdit, QGraphicsView, QGraphicsScene
+from PySide6.QtWidgets import QMainWindow, QTabWidget, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget, QLabel, QSlider, QLineEdit, QGraphicsView, QGraphicsScene
 from PySide6.QtGui import QFont, QPixmap, QPainter, QIntValidator
 from PySide6.QtCore import Qt, Signal
 from ui_logic import handle_file_selection, clear_json_file, clear_steps, on_preview_button_click, display_sorted_images, on_zoom_slider_change, show_context_menu, delete_selected_image, update_json_with_input, toggle_mode, display_image, clear_detect
 from functions import get_resource_path, load_json_variables, get_max_step_value, Click_step_by_step, initialize_setting_file
+from log_view import LogView
 import os
 import json
 
@@ -14,12 +15,37 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("圖像識別自動化執行工具")
         self.setGeometry(100, 100, 800, 600)
 
+        # 創建 QTabWidget
+        self.tabs = QTabWidget(self)
+        self.setCentralWidget(self.tabs)
+
+        # 設置頁籤的樣式
+        self.tabs.setStyleSheet(
+            """
+            QTabBar::tab {
+                height: 40px;  /* 設置頁籤高度 */
+                font-size: 16px;  /* 設置字體大小 */
+                padding: 10px;  /* 設置內邊距 */
+                min-width: 100px;  /* 設置頁籤最小寬度 */
+                max-width: 100px;  /* 設置頁籤最大寬度 */
+            }
+            """
+        )
+
+        # 創建主視圖和日誌視圖
+        self.main_widget = QWidget()
+        self.log_view = LogView(self)
+
+        # 添加主視圖和日誌視圖到頁籤
+        self.tabs.addTab(self.main_widget, "主視圖")
+        self.tabs.addTab(self.log_view, "日誌視圖")
+
+        # 設置主視圖的佈局
+        self.setup_main_view()
+
+    def setup_main_view(self):
         # 主窗口的中心小部件
-        central_widget = QWidget(self)
-        self.setCentralWidget(central_widget)
-        
-        # 水平佈局
-        main_layout = QHBoxLayout(central_widget)
+        main_layout = QHBoxLayout(self.main_widget)
         
         # 左側垂直佈局
         left_layout = QVBoxLayout()
@@ -182,7 +208,7 @@ class MainWindow(QMainWindow):
 
         # 使用 get_resource_path 來獲取 sv.json 的正確路徑
         json_path = get_resource_path('SaveData/sv.json')
-        # 導入 sv.json 的變數
+        # 導��� sv.json 的變數
         json_variables = load_json_variables(json_path)
         max_step_value = 0
         print("Start")
@@ -240,5 +266,12 @@ class MainWindow(QMainWindow):
         with open(setting_path, 'w', encoding='utf-8') as f:
             json.dump(settings, f, ensure_ascii=False, indent=4)
         print(f"模式已保存: {mode}")
+
+    def toggle_view(self):
+        """切換主視圖和日誌視圖"""
+        if self.centralWidget() == self.log_view:
+            self.setCentralWidget(self.main_widget)  # 切換回主視圖
+        else:
+            self.setCentralWidget(self.log_view)  # 切換到日誌視圖
 
     # 其他方法的實現

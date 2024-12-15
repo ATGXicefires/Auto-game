@@ -1,6 +1,6 @@
 import sys
 from PySide6.QtWidgets import QApplication
-from ui_components import MainWindow
+from main_view import MainWindow
 from functions import ensure_cache_directory, ensure_sv_json, ensure_detect_directory
 
 if __name__ == "__main__":
