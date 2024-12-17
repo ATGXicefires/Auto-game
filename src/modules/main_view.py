@@ -2,7 +2,7 @@ from PySide6.QtWidgets import QMainWindow, QTabWidget, QWidget, QVBoxLayout, QHB
 from PySide6.QtGui import QFont, QPixmap, QPainter, QIntValidator
 from PySide6.QtCore import Qt, Signal
 from ui_logic import handle_file_selection, clear_json_file, clear_steps, on_preview_button_click, display_sorted_images, on_zoom_slider_change, show_context_menu, delete_selected_image, update_json_with_input, toggle_mode, display_image, clear_detect
-from functions import get_resource_path, load_json_variables, get_max_step_value, Click_step_by_step, initialize_setting_file
+from functions import get_resource_path, load_json_variables, get_max_step_value, Click_step_by_step,ADB_match_template,set_adb_connection
 from log_view import LogView
 import os
 import json
@@ -195,9 +195,13 @@ class MainWindow(QMainWindow):
     def toggle_mode(self):
         if self.mode_button.isChecked():
             self.mode_button.setText("模式: ADB")
+            # 當切換到 ADB 模式時，自動調用 set_adb_connection
+            set_adb_connection(self.log_view, self)
         else:
             self.mode_button.setText("模式: Windows")
-        self.save_mode_setting()  # 確保這裡調用的是 MainWindow 的方法
+        
+        # 保存當前模式到 setting.json
+        self.save_mode_setting()
 
     def on_start_button_click(self):
         # 這裡是 Start_ON 的邏輯
@@ -233,7 +237,7 @@ class MainWindow(QMainWindow):
 
         # 根據模式選擇不同的點擊函數
         if is_adb_mode:
-            self.log_view.append_log("ADB 模式尚未實現")
+            ADB_match_template(step_array, self.log_view)
         else:
             Click_step_by_step(step_array, self.log_view)
 
@@ -244,18 +248,21 @@ class MainWindow(QMainWindow):
         clear_json_file(self)  # 確保傳遞 self 以便使用 get_resource_path
 
     def load_mode_setting(self):
-        setting_path = initialize_setting_file()  # 確保文件已初始化
-        with open(setting_path, 'r', encoding='utf-8') as f:
-            try:
+        setting_path = get_resource_path('cache/setting.json')
+        if os.path.exists(setting_path):
+            with open(setting_path, 'r', encoding='utf-8') as f:
                 settings = json.load(f)
                 mode = settings.get('detect_mode', 'Windows')
                 self.mode_button.setChecked(mode == 'ADB')
                 self.mode_button.setText(f"模式: {mode}")
-            except json.JSONDecodeError:
-                # 如果文件格式不正確，重新初始化
-                initialize_setting_file()
-                self.mode_button.setChecked(False)
-                self.mode_button.setText("模式: Windows")
+
+                # 如果模式是 ADB，則調用 set_adb_connection
+                if mode == 'ADB':
+                    set_adb_connection(self.log_view, self)
+        else:
+            # 如果文件不存在，默認設置為 Windows 模式
+            self.mode_button.setChecked(False)
+            self.mode_button.setText("模式: Windows")
 
     def save_mode_setting(self):
         setting_path = get_resource_path('cache/setting.json')

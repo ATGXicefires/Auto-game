@@ -2,11 +2,13 @@ import os
 import json
 import sys
 import pyautogui
+import subprocess
 import cv2
 import numpy as np
 from PIL import Image
 import time
 from log_view import LogView
+from PySide6.QtWidgets import QMessageBox,QInputDialog
 
 def ensure_cache_directory():
     cache_path = get_resource_path('cache')
@@ -161,4 +163,118 @@ def match_template(template_path, log_view, confidence=0.9, timeout=10):
     log_view.append_log("未找到匹配的影像")
     return None
 
-# 其他函數如 match_template 等可以在這裡定義或在其他模塊中定義並導入
+def set_adb_connection(log_view, parent_widget):
+    ip_addresses = [
+        "127.0.0.1:5555",
+        "127.0.0.1:16384",
+        "127.0.0.1:7555",
+        "127.0.0.1:21503",
+        "127.0.0.1:62001"
+    ]
+
+    max_attempts = 3
+    for attempt in range(max_attempts):
+        try:
+            # 列出所有設備
+            devices_output = subprocess.check_output('adb devices', shell=True).decode('utf-8')
+            log_view.append_log(devices_output)
+
+            # 解析設備列表
+            devices = [line.split()[0] for line in devices_output.splitlines() if 'device' in line]
+            if not devices:
+                log_view.append_log("沒有找到可用的設備")
+                continue
+
+            # 使用第一個可用的設備
+            device_id = devices[0]
+            log_view.append_log(f"使用設備: {device_id}")
+
+            for ip_address in ip_addresses:
+                try:
+                    output = subprocess.check_output(f'adb -s {device_id} connect {ip_address}', shell=True, stderr=subprocess.STDOUT, timeout=30)
+                    log_view.append_log(output.decode('utf-8'))  # 記錄 ADB 連接的輸出訊息
+                    log_view.append_log(f"成功連接到 ADB: {ip_address}")
+                    return ip_address
+                except subprocess.CalledProcessError as e:
+                    log_view.append_log(f"連接 ADB 失敗: {e.output.decode('utf-8')}")
+                except subprocess.TimeoutExpired:
+                    log_view.append_log(f"連接 ADB 超時: {ip_address}")
+
+        except Exception as e:
+            log_view.append_log(f"獲取設備列表時出錯: {e}")
+
+        # 如果所有 IP 地址都無法連接，詢問用戶是否要手動輸入
+        reply = QMessageBox.question(
+            parent_widget,
+            "ADB 連接失敗",
+            "無法連接到任何 ADB 位址。是否要手動輸入 ADB 位址？",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+
+        if reply == QMessageBox.Yes:
+            # 使用 QInputDialog 讓用戶輸入 ADB 地址
+            text, ok = QInputDialog.getText(parent_widget, "手動輸入 ADB 地址", "請輸入 ADB 地址:")
+            if ok and text:
+                try:
+                    output = subprocess.check_output(f'adb -s {device_id} connect {text}', shell=True, stderr=subprocess.STDOUT, timeout=30)
+                    log_view.append_log(output.decode('utf-8'))  # 記錄 ADB 連接的輸出訊息
+                    log_view.append_log(f"成功連接到 ADB: {text}")
+                    return text
+                except subprocess.CalledProcessError as e:
+                    log_view.append_log(f"連接 ADB 失敗: {e.output.decode('utf-8')}")
+                except subprocess.TimeoutExpired:
+                    log_view.append_log(f"連接 ADB 超時: {text}")
+
+    log_view.append_log("ADB 連接出現預期外的問題")
+    print("ADB 連接出現預期外的問題")
+    return None
+
+# 獲取截圖存放的位置
+def get_screenshot_path():
+    return get_resource_path('cache/screenshot.png')
+
+# 使用 ADB 截圖
+def adb_screenshot():
+    subprocess.run(['adb', 'exec-out', 'screencap', '-p'], stdout=open(get_screenshot_path(), 'wb'))
+
+def ADB_match_template(step_array, log_view, confidence=0.9, timeout=10):
+    for template_path in step_array:
+        # 確保 template_path 是一個有效的路徑
+        full_template_path = get_resource_path(template_path)
+        if not os.path.exists(full_template_path):
+            log_view.append_log(f"模板文件不存在: {full_template_path}")
+            continue
+
+        start_time = time.time()  # 獲取當前時間
+
+        # 使用 PIL 讀取圖片，然後轉換為 OpenCV 格式
+        try:
+            pil_image = Image.open(full_template_path)
+            template = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
+        except Exception as e:
+            log_view.append_log(f"無法讀取圖片: {full_template_path}, 錯誤: {e}")
+            continue
+
+        while time.time() - start_time < timeout:  # 當前時間 - 開始時間 < 超時時間
+            try:
+                adb_screenshot()
+                screenshot = cv2.imread(get_screenshot_path(), cv2.IMREAD_COLOR)
+                if screenshot is None:
+                    log_view.append_log("無法讀取截圖")
+                    continue
+
+                result = cv2.matchTemplate(screenshot, template, cv2.TM_CCOEFF_NORMED)
+                min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+                log_view.append_log(f"匹配值: {max_val}")  # 調試信息
+
+                if max_val >= confidence:
+                    log_view.append_log(f"找到匹配位置: {max_loc}")
+                    return max_loc, template.shape  # 如果找到圖像，返回其位置和模板大小
+            except Exception as e:
+                log_view.append_log(f"圖像識別中: {e}")  # 打印識別錯誤
+
+            time.sleep(1)  # 等待1秒後再次嘗試
+
+    log_view.append_log("未找到匹配的影像")
+    return None, None  # 超過等待時間，返回 None

@@ -12,7 +12,7 @@ class LogView(QWidget):
         # 創建一個文本編輯器來顯示日誌
         self.log_text_edit = QTextEdit(self)
         self.log_text_edit.setReadOnly(True)  # 設置為只讀
-        self.log_text_edit.setStyleSheet("color: lightblue;")  # 設置字體顏色為藍色
+        self.log_text_edit.setStyleSheet("color: lightblue; background-color: black;")  # 設置字體顏色為藍色
         layout.addWidget(self.log_text_edit)
         
     def append_log(self, message):

@@ -5,7 +5,7 @@ import json
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QFileDialog, QListWidget, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QSlider, QMenu, QLineEdit, QMessageBox, QGraphicsView, QGraphicsScene, QStyle, QStyleOptionSlider, QGraphicsPixmapItem
 from PySide6.QtGui import QPixmap, QIntValidator, QPainter, QFont, QPen
 from PySide6.QtCore import Qt, Signal
-from functions import get_resource_path, load_json_variables, get_max_step_value, Click_step_by_step
+from functions import get_resource_path, load_json_variables, get_max_step_value, Click_step_by_step,adb_screenshot
 from log_view import LogView
 
 # 在 MainWindow 類別中使用這些邏輯方法
@@ -370,3 +370,6 @@ def toggle_mode(main_window):
     
     # 保存當前模式到 setting.json
     main_window.save_mode_setting()
+
+
+
