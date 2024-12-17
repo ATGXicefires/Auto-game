@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['src\\modules\\main.py','src\\modules\\functions.py','src\\modules\\ui_components.py','src\\modules\\ui_logic.py','src\\modules\\main_view.py','src\\modules\\log_view.py'],
+    ['src\\modules\\main.py','src\\modules\\functions.py','src\\modules\\ui_logic.py','src\\modules\\main_view.py','src\\modules\\log_view.py'],
     pathex=[],
     binaries=[],
     datas=[],
@@ -21,7 +21,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='main',
+    name='AutoGameClicker v0.2',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -40,5 +40,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='main',
+    name='AutoGameClicker v0.2',
 )

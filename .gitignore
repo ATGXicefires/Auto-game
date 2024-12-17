@@ -34,3 +34,4 @@ test/json_test/build/
 
 # package
 build/
+dist/
