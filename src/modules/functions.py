@@ -16,7 +16,9 @@ def ensure_cache_directory():
     cache_path = get_resource_path('cache')
     if not os.path.exists(cache_path):
         os.makedirs(cache_path)
-        LogView.append_log(f"創建了 cache 資料夾: {cache_path}")
+        print(f"創建了新的緩存目錄: {cache_path}")
+    else:
+        print(f"緩存目錄已存在: {cache_path}")
 
 def ensure_detect_directory():
     detect_path = get_resource_path('detect')
@@ -26,10 +28,12 @@ def ensure_detect_directory():
 
 def clear_sv_json():
     """清空 sv.json 文件"""
-    json_path = get_resource_path("SaveData/sv.json")
-    with open(json_path, 'w', encoding='utf-8') as f:
-        json.dump({}, f, ensure_ascii=False, indent=4)
-    print(f"Cleared {json_path}")
+    sv_json_path = get_resource_path('SaveData/sv.json')
+    if os.path.exists(sv_json_path):
+        with open(sv_json_path, 'w', encoding='utf-8') as f:
+            json.dump({}, f, ensure_ascii=False, indent=4)
+    else:
+        print(f"文件不存在: {sv_json_path}")
 
 def ensure_sv_json():
     json_path = get_resource_path('SaveData/sv.json')
@@ -52,10 +56,9 @@ def initialize_setting_file():
     return json_path
 
 def get_resource_path(relative_path):
-    """獲取資源文件的正確路徑"""
-    if hasattr(sys, '_MEIPASS'):
-        return os.path.join(sys._MEIPASS, relative_path)
-    return os.path.join(os.path.abspath("."), relative_path)
+    """獲取資源文件的絕對路徑，適用於打包後的環境"""
+    base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
+    return os.path.join(base_path, relative_path)
 
 def load_json_variables(file_path):
     '''
@@ -72,6 +75,11 @@ def load_json_variables(file_path):
     with open(full_path, 'r', encoding='utf-8') as file:
         data = json.load(file)
     
+    # 修正路徑
+    for key in data:
+        if isinstance(data[key], str) and data[key].startswith('detect\\'):
+            data[key] = data[key].replace('detect\\', '_internal\\detect\\')
+
     return data
 
 def get_max_step_value(json_data):
@@ -288,7 +296,11 @@ def ADB_match_template(step_array, log_view, confidence=0.9, timeout=10):
         return None, None
 
     for template_path in step_array:
-        # 確保 template_path 是一個有效的路徑
+        # 確保 template_path 是一個有效的相對路徑
+        # 移除任何不必要的前綴
+        if template_path.startswith('_internal\\'):
+            template_path = template_path[len('_internal\\'):]
+
         full_template_path = get_resource_path(template_path)
         if not os.path.exists(full_template_path):
             log_view.append_log(f"模板文件不存在: {full_template_path}")
