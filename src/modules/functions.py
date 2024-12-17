@@ -10,6 +10,8 @@ import time
 from log_view import LogView
 from PySide6.QtWidgets import QMessageBox,QInputDialog
 
+selected_device_id = None  # 全局變量來存儲選擇的設備 ID
+
 def ensure_cache_directory():
     cache_path = get_resource_path('cache')
     if not os.path.exists(cache_path):
@@ -164,6 +166,7 @@ def match_template(template_path, log_view, confidence=0.9, timeout=10):
     return None
 
 def set_adb_connection(log_view, parent_widget):
+    global selected_device_id
     ip_addresses = [
         "127.0.0.1:5555",
         "127.0.0.1:16384",
@@ -185,13 +188,32 @@ def set_adb_connection(log_view, parent_widget):
                 log_view.append_log("沒有找到可用的設備")
                 continue
 
-            # 使用第一個可用的設備
-            device_id = devices[0]
-            log_view.append_log(f"使用設備: {device_id}")
+            # 優先選擇出現在 ip_addresses 的位址
+            preferred_device_id = None
+            for ip in ip_addresses:
+                if ip in devices:
+                    preferred_device_id = ip
+                    break
 
+            # 如果沒有找到優先設備，選擇第一個偵測到的設備
+            if not preferred_device_id:
+                preferred_device_id = devices[0]
+
+            log_view.append_log(f"使用設備: {preferred_device_id}")
+
+            # 移除其他設備
+            for device in devices:
+                if device != preferred_device_id:
+                    subprocess.check_output(f'adb -s {device} disconnect', shell=True)
+                    log_view.append_log(f"移除設備: {device}")
+
+            # 設置選擇的設備 ID
+            selected_device_id = preferred_device_id
+
+            # 嘗試連接到優先設備
             for ip_address in ip_addresses:
                 try:
-                    output = subprocess.check_output(f'adb -s {device_id} connect {ip_address}', shell=True, stderr=subprocess.STDOUT, timeout=30)
+                    output = subprocess.check_output(f'adb -s {preferred_device_id} connect {ip_address}', shell=True, stderr=subprocess.STDOUT, timeout=30)
                     log_view.append_log(output.decode('utf-8'))  # 記錄 ADB 連接的輸出訊息
                     log_view.append_log(f"成功連接到 ADB: {ip_address}")
                     return ip_address
@@ -217,9 +239,10 @@ def set_adb_connection(log_view, parent_widget):
             text, ok = QInputDialog.getText(parent_widget, "手動輸入 ADB 地址", "請輸入 ADB 地址:")
             if ok and text:
                 try:
-                    output = subprocess.check_output(f'adb -s {device_id} connect {text}', shell=True, stderr=subprocess.STDOUT, timeout=30)
+                    output = subprocess.check_output(f'adb -s {preferred_device_id} connect {text}', shell=True, stderr=subprocess.STDOUT, timeout=30)
                     log_view.append_log(output.decode('utf-8'))  # 記錄 ADB 連接的輸出訊息
                     log_view.append_log(f"成功連接到 ADB: {text}")
+                    selected_device_id = preferred_device_id
                     return text
                 except subprocess.CalledProcessError as e:
                     log_view.append_log(f"連接 ADB 失敗: {e.output.decode('utf-8')}")
@@ -236,9 +259,34 @@ def get_screenshot_path():
 
 # 使用 ADB 截圖
 def adb_screenshot():
-    subprocess.run(['adb', 'exec-out', 'screencap', '-p'], stdout=open(get_screenshot_path(), 'wb'))
+    global selected_device_id
+    if selected_device_id:
+        subprocess.run(['adb', '-s', selected_device_id, 'exec-out', 'screencap', '-p'], stdout=open(get_screenshot_path(), 'wb'))
+    else:
+        print("未選擇設備，無法截圖")
+
+def calculate_and_tap_center(location, template_shape, log_view):
+    """
+    計算點擊位置的中心點並執行點擊操作。
+    
+    :param location: 圖片位置 (x, y)
+    :param template_shape: 模板大小 (height, width)
+    """
+    global selected_device_id
+    if not selected_device_id:
+        log_view.append_log("未選擇設備，無法進行點擊操作")
+        return
+
+    button_center_x = location[0] + template_shape[1] // 2
+    button_center_y = location[1] + template_shape[0] // 2
+    subprocess.run(['adb', '-s', selected_device_id, 'shell', 'input', 'tap', str(button_center_x), str(button_center_y)])
 
 def ADB_match_template(step_array, log_view, confidence=0.9, timeout=10):
+    global selected_device_id
+    if not selected_device_id:
+        log_view.append_log("未選擇設備，無法進行模板匹配")
+        return None, None
+
     for template_path in step_array:
         # 確保 template_path 是一個有效的路徑
         full_template_path = get_resource_path(template_path)
@@ -270,6 +318,7 @@ def ADB_match_template(step_array, log_view, confidence=0.9, timeout=10):
 
                 if max_val >= confidence:
                     log_view.append_log(f"找到匹配位置: {max_loc}")
+                    calculate_and_tap_center(max_loc, template.shape, log_view)  # 使用 ADB 點擊
                     return max_loc, template.shape  # 如果找到圖像，返回其位置和模板大小
             except Exception as e:
                 log_view.append_log(f"圖像識別中: {e}")  # 打印識別錯誤
