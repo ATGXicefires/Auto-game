@@ -74,11 +74,6 @@ def load_json_variables(file_path):
 
     with open(full_path, 'r', encoding='utf-8') as file:
         data = json.load(file)
-    
-    # 修正路徑
-    for key in data:
-        if isinstance(data[key], str) and data[key].startswith('detect\\'):
-            data[key] = data[key].replace('detect\\', '_internal\\detect\\')
 
     return data
 
