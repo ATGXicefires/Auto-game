@@ -220,6 +220,9 @@ class MainWindow(QMainWindow):
         max_step_value = 0
         self.log_view.append_log("Start")
         
+        # 最小化主窗口
+        self.showMinimized()
+
         # 找出 "Step[Y]" 的最大 Y 值
         max_step_value = get_max_step_value(json_variables)
         self.log_view.append_log(f"最大 Step[Y] 值: {max_step_value}")
