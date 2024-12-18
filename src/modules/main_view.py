@@ -2,13 +2,16 @@ from PySide6.QtWidgets import QMainWindow, QTabWidget, QWidget, QVBoxLayout, QHB
 from PySide6.QtGui import QFont, QPixmap, QPainter, QIntValidator
 from PySide6.QtCore import Qt, Signal
 from ui_logic import handle_file_selection, clear_json_file, clear_steps, on_preview_button_click, display_sorted_images, on_zoom_slider_change, show_context_menu, delete_selected_image, update_json_with_input, toggle_mode, display_image, clear_detect
-from functions import get_resource_path, load_json_variables, get_max_step_value, Click_step_by_step,ADB_match_template,set_adb_connection
+from functions import get_resource_path, load_json_variables, get_max_step_value, Click_step_by_step,ADB_match_template,set_adb_connection,ADB_Click_step_by_step
 from log_view import LogView
 import os
 import json
 
 class MainWindow(QMainWindow):
     start_signal = Signal()  # 確保信號正確定義
+
+    def on_task_finished(self):
+        self.log_view.append_log("任務完成")
 
     def __init__(self):
         super(MainWindow, self).__init__()
@@ -217,9 +220,6 @@ class MainWindow(QMainWindow):
         max_step_value = 0
         self.log_view.append_log("Start")
         
-        # 最小化主窗口
-        self.showMinimized()
-        
         # 找出 "Step[Y]" 的最大 Y 值
         max_step_value = get_max_step_value(json_variables)
         self.log_view.append_log(f"最大 Step[Y] 值: {max_step_value}")
@@ -237,7 +237,7 @@ class MainWindow(QMainWindow):
 
         # 根據模式選擇不同的點擊函數
         if is_adb_mode:
-            ADB_match_template(step_array, self.log_view)
+            ADB_Click_step_by_step(step_array, self.log_view)
         else:
             Click_step_by_step(step_array, self.log_view)
 

@@ -115,14 +115,14 @@ def Click_step_by_step(step_array, log_view):
         else:
             log_view.append_log(f"未找到: {image_path}")
 
-def match_template(template_path, log_view, confidence=0.9, timeout=10):
+def match_template(template_path, log_view, confidence=0.9, timeout=30):
     """
     在螢幕截圖中尋找模板圖像的位置。
     
     :param template_path: 模板圖片的路徑
     :param log_view: 用於記錄日誌的 LogView 實例
     :param confidence: 匹配的信心值(預設0.9)
-    :param timeout: 超時時間(預設10秒)
+    :param timeout: 超時時間(預設30秒)
     :return: 匹配位置 (x, y) 或 None
     """
     if not os.path.exists(template_path):
@@ -183,7 +183,8 @@ def set_adb_connection(log_view, parent_widget):
         "127.0.0.1:62001"
     ]
 
-    max_attempts = 3
+    max_attempts = 2
+
     for attempt in range(max_attempts):
         try:
             # 列出所有設備
@@ -273,7 +274,7 @@ def adb_screenshot():
     else:
         print("未選擇設備，無法截圖")
 
-def calculate_and_tap_center(location, template_shape, log_view):
+def ADB_calculate_and_tap_center(location, template_shape, log_view):
     """
     計算點擊位置的中心點並執行點擊操作。
     
@@ -289,7 +290,7 @@ def calculate_and_tap_center(location, template_shape, log_view):
     button_center_y = location[1] + template_shape[0] // 2
     subprocess.run(['adb', '-s', selected_device_id, 'shell', 'input', 'tap', str(button_center_x), str(button_center_y)])
 
-def ADB_match_template(step_array, log_view, confidence=0.9, timeout=10):
+def ADB_match_template(step_array, log_view, confidence=0.9, timeout=30):
     global selected_device_id
     if not selected_device_id:
         log_view.append_log("未選擇設備，無法進行模板匹配")
@@ -297,7 +298,6 @@ def ADB_match_template(step_array, log_view, confidence=0.9, timeout=10):
 
     for template_path in step_array:
         # 確保 template_path 是一個有效的相對路徑
-        # 移除任何不必要的前綴
         if template_path.startswith('_internal\\'):
             template_path = template_path[len('_internal\\'):]
 
@@ -326,12 +326,11 @@ def ADB_match_template(step_array, log_view, confidence=0.9, timeout=10):
 
                 result = cv2.matchTemplate(screenshot, template, cv2.TM_CCOEFF_NORMED)
                 min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-                log_view.append_log(f"匹配值: {max_val}")  # 調試信息
+                log_view.append_log(f"匹配值: {max_val}")
 
                 if max_val >= confidence:
                     log_view.append_log(f"找到匹配位置: {max_loc}")
-                    calculate_and_tap_center(max_loc, template.shape, log_view)  # 使用 ADB 點擊
-                    return max_loc, template.shape  # 如果找到圖像，返回其位置和模板大小
+                    return max_loc, template.shape  # 返回位置和模板大小
             except Exception as e:
                 log_view.append_log(f"圖像識別中: {e}")  # 打印識別錯誤
 
@@ -339,3 +338,14 @@ def ADB_match_template(step_array, log_view, confidence=0.9, timeout=10):
 
     log_view.append_log("未找到匹配的影像")
     return None, None  # 超過等待時間，返回 None
+
+def ADB_Click_step_by_step(step_array, log_view):
+    # 依序尋找並使用 ADB 點擊每個 Step[Y] 對應的圖片
+    for image_path in step_array:
+        log_view.append_log(f"正在尋找並點擊: {image_path}")
+        location, template_shape = ADB_match_template([image_path], log_view)
+        if location:
+            ADB_calculate_and_tap_center(location, template_shape, log_view)
+            log_view.append_log(f"已點擊: {image_path}")
+        else:
+            log_view.append_log(f"未找到: {image_path}")
