@@ -21,7 +21,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='AutoGameClicker v0.2',
+    name='AutoGameClicker v0.2.1',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -40,5 +40,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='AutoGameClicker v0.2',
+    name='AutoGameClicker v0.2.1',
 )
