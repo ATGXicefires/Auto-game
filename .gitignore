@@ -35,3 +35,8 @@ test/json_test/build/
 # package
 build/
 dist/
+
+# icon & version
+app.ico
+file_version.txt
+

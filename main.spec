@@ -21,7 +21,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='AutoGameClicker v0.2.1',
+    name='AutoGameClicker v0.2.2',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -32,6 +32,8 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    version='file_version.txt',
+    icon='app.ico',
 )
 coll = COLLECT(
     exe,
@@ -40,5 +42,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='AutoGameClicker v0.2.1',
+    name='AutoGameClicker v0.2.2',
 )

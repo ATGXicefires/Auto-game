@@ -264,7 +264,12 @@ def get_screenshot_path():
 def adb_screenshot():
     global selected_device_id
     if selected_device_id:
-        subprocess.run(['adb', '-s', selected_device_id, 'exec-out', 'screencap', '-p'], stdout=open(get_screenshot_path(), 'wb'))
+        with open(get_screenshot_path(), 'wb') as f:
+            subprocess.run(
+                ['adb', '-s', selected_device_id, 'exec-out', 'screencap', '-p'],
+                stdout=f,
+                creationflags=subprocess.CREATE_NO_WINDOW
+            )
     else:
         print("未選擇設備，無法截圖")
 
@@ -282,7 +287,10 @@ def ADB_calculate_and_tap_center(location, template_shape, log_view):
 
     button_center_x = location[0] + template_shape[1] // 2
     button_center_y = location[1] + template_shape[0] // 2
-    subprocess.run(['adb', '-s', selected_device_id, 'shell', 'input', 'tap', str(button_center_x), str(button_center_y)])
+    subprocess.run(
+        ['adb', '-s', selected_device_id, 'shell', 'input', 'tap', str(button_center_x), str(button_center_y)],
+        creationflags=subprocess.CREATE_NO_WINDOW
+    )
 
 def ADB_match_template(step_array, log_view, confidence=0.9, timeout=30):
     global selected_device_id
