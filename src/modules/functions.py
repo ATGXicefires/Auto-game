@@ -157,7 +157,6 @@ def match_template(template_path, log_view, confidence=0.9, timeout=30):
 
             # 平滑移動鼠標到中心點並點擊
             pyautogui.moveTo(center_x, center_y, duration=0.5)  # duration 控制移動速度
-            pyautogui.click()
             return (center_x, center_y)  # 返回匹配位置的中心點座標
 
         # 打印當前匹配的準確值
