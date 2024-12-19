@@ -1,5 +1,5 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QGraphicsView, QGraphicsScene, QGraphicsPixmapItem
-from PySide6.QtGui import QPixmap, QDragEnterEvent, QDropEvent, QFont, QWheelEvent, QPainter
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsRectItem
+from PySide6.QtGui import QPixmap, QDragEnterEvent, QDropEvent, QFont, QWheelEvent, QPen, QColor, QPainter, QMouseEvent
 from PySide6.QtCore import Qt
 import shutil
 import os
@@ -30,6 +30,9 @@ class TestView(QWidget):
         self.label.setFont(QFont("Arial", 16, QFont.Bold))  # 設置字體大小和粗體
         self.label.setStyleSheet("color: white; background-color: darkblue; padding: 10px;")  # 設置字體顏色和背景顏色
         layout.addWidget(self.label)
+
+        # 用於存儲連線的起始點
+        self.start_dot = None
 
     def dragEnterEvent(self, event: QDragEnterEvent):
         if event.mimeData().hasUrls():
@@ -74,10 +77,71 @@ class TestView(QWidget):
             pixmap_item.setFlag(QGraphicsPixmapItem.ItemIsMovable, True)  # 設置圖片為可移動
             pixmap_item.setFlag(QGraphicsPixmapItem.ItemIsSelectable, True)  # 設置圖片為可選擇
             self.graphics_scene.addItem(pixmap_item)
+
+            # 添加小白點
+            self.add_white_dots(pixmap_item)
+
             self.label.setText(f"已載入圖片: {file_name}")
 
         except Exception as e:
             print(f"處理圖片時發生錯誤: {e}")
+
+    def add_white_dots(self, pixmap_item):
+        """在圖片的上下左右添加小白點"""
+        rect_size = 10  # 小白點的大小
+        offset = 10  # 小白點與圖片的距離
+        pen = QPen(QColor("white"))
+        pen.setWidth(0)  # 設置邊框寬度為0
+
+        # 獲取圖片的邊界
+        rect = pixmap_item.boundingRect()
+
+        # 上
+        top_dot = QGraphicsRectItem(rect.width() / 2 - rect_size / 2, -rect_size / 2 - offset, rect_size, rect_size, pixmap_item)
+        top_dot.setPen(pen)
+        top_dot.setBrush(QColor("white"))
+        top_dot.setFlag(QGraphicsRectItem.ItemIsSelectable, True)
+        top_dot.setData(0, "dot")  # 標記為小白點
+        self.graphics_scene.addItem(top_dot)
+
+        # 下
+        bottom_dot = QGraphicsRectItem(rect.width() / 2 - rect_size / 2, rect.height() - rect_size / 2 + offset, rect_size, rect_size, pixmap_item)
+        bottom_dot.setPen(pen)
+        bottom_dot.setBrush(QColor("white"))
+        bottom_dot.setFlag(QGraphicsRectItem.ItemIsSelectable, True)
+        bottom_dot.setData(0, "dot")
+        self.graphics_scene.addItem(bottom_dot)
+
+        # 左
+        left_dot = QGraphicsRectItem(-rect_size / 2 - offset, rect.height() / 2 - rect_size / 2, rect_size, rect_size, pixmap_item)
+        left_dot.setPen(pen)
+        left_dot.setBrush(QColor("white"))
+        left_dot.setFlag(QGraphicsRectItem.ItemIsSelectable, True)
+        left_dot.setData(0, "dot")
+        self.graphics_scene.addItem(left_dot)
+
+        # 右
+        right_dot = QGraphicsRectItem(rect.width() - rect_size / 2 + offset, rect.height() / 2 - rect_size / 2, rect_size, rect_size, pixmap_item)
+        right_dot.setPen(pen)
+        right_dot.setBrush(QColor("white"))
+        right_dot.setFlag(QGraphicsRectItem.ItemIsSelectable, True)
+        right_dot.setData(0, "dot")
+        self.graphics_scene.addItem(right_dot)
+
+    def mousePressEvent(self, event: QMouseEvent):
+        """處理小白點的點擊事件"""
+        item = self.graphics_scene.itemAt(self.graphics_view.mapToScene(event.pos()), self.graphics_view.transform())
+        if item and item.data(0) == "dot":
+            if self.start_dot is None:
+                self.start_dot = item
+            else:
+                # 繪製連線
+                start_pos = self.start_dot.mapToScene(self.start_dot.boundingRect().center())
+                end_pos = item.mapToScene(item.boundingRect().center())
+                line = self.graphics_scene.addLine(start_pos.x(), start_pos.y(),
+                                                   end_pos.x(), end_pos.y(),
+                                                   QPen(QColor("lightblue"), 2))
+                self.start_dot = None  # 重置起始點
 
     def wheelEvent(self, event: QWheelEvent):
         """使用滾輪放大縮小圖片"""
