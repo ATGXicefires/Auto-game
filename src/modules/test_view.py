@@ -1,5 +1,5 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QGraphicsView, QGraphicsScene
-from PySide6.QtGui import QPixmap, QDragEnterEvent, QDropEvent
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QGraphicsView, QGraphicsScene, QGraphicsPixmapItem
+from PySide6.QtGui import QPixmap, QDragEnterEvent, QDropEvent, QFont, QWheelEvent, QPainter
 from PySide6.QtCore import Qt
 import shutil
 import os
@@ -19,12 +19,16 @@ class TestView(QWidget):
         self.graphics_view = QGraphicsView(self)
         self.graphics_scene = QGraphicsScene(self)
         self.graphics_view.setScene(self.graphics_scene)
-        self.graphics_view.setStyleSheet("background-color: black;")
+        self.graphics_view.setRenderHint(QPainter.Antialiasing)  # 使用 QPainter 的屬性
+        self.graphics_view.setRenderHint(QPainter.SmoothPixmapTransform)  # 使用 QPainter 的屬性
+        self.graphics_view.setDragMode(QGraphicsView.ScrollHandDrag)  # 啟用拖曳模式
         layout.addWidget(self.graphics_view)
 
         # 添加提示標籤
         self.label = QLabel("拖曳圖片到此區域", self)
         self.label.setAlignment(Qt.AlignCenter)
+        self.label.setFont(QFont("Arial", 16, QFont.Bold))  # 設置字體大小和粗體
+        self.label.setStyleSheet("color: white; background-color: darkblue; padding: 10px;")  # 設置字體顏色和背景顏色
         layout.addWidget(self.label)
 
     def dragEnterEvent(self, event: QDragEnterEvent):
@@ -65,9 +69,23 @@ class TestView(QWidget):
                 print("無法加載圖片，檢查圖片文件是否損壞")
                 return
 
-            self.graphics_scene.clear()
-            self.graphics_scene.addPixmap(pixmap)
+            # 創建可移動的圖片項目
+            pixmap_item = QGraphicsPixmapItem(pixmap)
+            pixmap_item.setFlag(QGraphicsPixmapItem.ItemIsMovable, True)  # 設置圖片為可移動
+            pixmap_item.setFlag(QGraphicsPixmapItem.ItemIsSelectable, True)  # 設置圖片為可選擇
+            self.graphics_scene.addItem(pixmap_item)
             self.label.setText(f"已載入圖片: {file_name}")
 
         except Exception as e:
             print(f"處理圖片時發生錯誤: {e}")
+
+    def wheelEvent(self, event: QWheelEvent):
+        """使用滾輪放大縮小圖片"""
+        factor = 1.2 if event.angleDelta().y() > 0 else 1 / 1.2
+        # 檢查是否有選中的圖片
+        selected_items = self.graphics_scene.selectedItems()
+        if selected_items:
+            for item in selected_items:
+                item.setScale(item.scale() * factor)
+        else:
+            self.graphics_view.scale(factor, factor)
