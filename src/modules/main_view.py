@@ -4,6 +4,7 @@ from PySide6.QtCore import Qt, Signal, QThread
 from ui_logic import handle_file_selection, clear_json_file, clear_steps, on_preview_button_click, display_sorted_images, on_zoom_slider_change, show_context_menu, delete_selected_image, update_json_with_input, toggle_mode, display_image, clear_detect
 from functions import get_resource_path, load_json_variables, get_max_step_value, Click_step_by_step,ADB_match_template,set_adb_connection,ADB_Click_step_by_step
 from log_view import LogView
+from test_view import TestView
 import os
 import json
 
@@ -60,10 +61,12 @@ class MainWindow(QMainWindow):
         # 創建主視圖和日誌視圖
         self.main_widget = QWidget()
         self.log_view = LogView(self)
+        self.test_view = TestView(self)
 
         # 添加主視圖和日誌視圖到頁籤
         self.tabs.addTab(self.main_widget, "主視圖")
         self.tabs.addTab(self.log_view, "日誌視圖")
+        self.tabs.addTab(self.test_view, "測試視圖")
 
         # 設置主視圖的佈局
         self.setup_main_view()
