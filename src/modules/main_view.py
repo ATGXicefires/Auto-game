@@ -1,11 +1,29 @@
 from PySide6.QtWidgets import QMainWindow, QTabWidget, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget, QLabel, QSlider, QLineEdit, QGraphicsView, QGraphicsScene
 from PySide6.QtGui import QFont, QPixmap, QPainter, QIntValidator
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QThread
 from ui_logic import handle_file_selection, clear_json_file, clear_steps, on_preview_button_click, display_sorted_images, on_zoom_slider_change, show_context_menu, delete_selected_image, update_json_with_input, toggle_mode, display_image, clear_detect
 from functions import get_resource_path, load_json_variables, get_max_step_value, Click_step_by_step,ADB_match_template,set_adb_connection,ADB_Click_step_by_step
 from log_view import LogView
 import os
 import json
+
+class ClickWorker(QThread):
+    finished = Signal()
+    log_signal = Signal(str)
+    
+    def __init__(self, step_array, log_view, is_adb_mode):
+        super().__init__()
+        self.step_array = step_array
+        self.log_view = log_view
+        self.is_adb_mode = is_adb_mode
+
+    def run(self):
+        # 根據模式選擇不同的點擊函數
+        if self.is_adb_mode:
+            ADB_Click_step_by_step(self.step_array, self.log_view)
+        else:
+            Click_step_by_step(self.step_array, self.log_view)
+        self.finished.emit()
 
 class MainWindow(QMainWindow):
     start_signal = Signal()  # 確保信號正確定義
@@ -17,6 +35,10 @@ class MainWindow(QMainWindow):
         super(MainWindow, self).__init__()
         self.setWindowTitle("圖像識別自動化執行工具")
         self.setGeometry(100, 100, 800, 600)
+
+        # 初始化 step_array 和 is_adb_mode
+        self.step_array = []  # 初始化為空列表
+        self.is_adb_mode = False  # 初始化為 False
 
         # 創建 QTabWidget
         self.tabs = QTabWidget(self)
@@ -209,8 +231,8 @@ class MainWindow(QMainWindow):
     def on_start_button_click(self):
         # 這裡是 Start_ON 的邏輯
         # 獲取當前模式
-        is_adb_mode = self.mode_button.isChecked()
-        mode_text = "ADB" if is_adb_mode else "Windows"
+        self.is_adb_mode = self.mode_button.isChecked()
+        mode_text = "ADB" if self.is_adb_mode else "Windows"
         self.log_view.append_log(f"當前模式: {mode_text}")
 
         # 使用 get_resource_path 來獲取 sv.json 的正確路徑
@@ -221,28 +243,27 @@ class MainWindow(QMainWindow):
         self.log_view.append_log("Start")
         
         # 最小化主窗口
-        self.showMinimized()
+        #self.showMinimized()
 
         # 找出 "Step[Y]" 的最大 Y 值
         max_step_value = get_max_step_value(json_variables)
         self.log_view.append_log(f"最大 Step[Y] 值: {max_step_value}")
 
         # 將 Step[Y] 的內容值存入 step_array
-        step_array = []
+        self.step_array = []  # 將 step_array 存儲為實例變數
         for i in range(1, max_step_value + 1):
             step_key = f"Step[{i}]"
             if step_key in json_variables:
-                step_array.append(json_variables[step_key])
+                self.step_array.append(json_variables[step_key])
         
         # 打印出 step_array 中的所有值
         for index in range(max_step_value):
-            self.log_view.append_log(f"step_array[{index}]: {step_array[index]}")
+            self.log_view.append_log(f"step_array[{index}]: {self.step_array[index]}")
 
-        # 根據模式選擇不同的點擊函數
-        if is_adb_mode:
-            ADB_Click_step_by_step(step_array, self.log_view)
-        else:
-            Click_step_by_step(step_array, self.log_view)
+        # 創建並啟動 ClickWorker 執行緒
+        self.worker = ClickWorker(self.step_array, self.log_view, self.is_adb_mode)
+        self.worker.finished.connect(lambda: self.log_view.append_log("點擊操作完成"))
+        self.worker.start()
 
     def display_image(self, item):
         display_image(self, item)
