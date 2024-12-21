@@ -1,9 +1,8 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsRectItem
 from PySide6.QtGui import QPixmap, QDragEnterEvent, QDropEvent, QFont, QWheelEvent, QPen, QColor, QPainter, QMouseEvent
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QLineF
 import shutil
 import os
-import sys
 from functions import get_resource_path
 
 class TestView(QWidget):
@@ -31,60 +30,49 @@ class TestView(QWidget):
         self.label.setStyleSheet("color: white; background-color: darkblue; padding: 10px;")  # 設置字體顏色和背景顏色
         layout.addWidget(self.label)
 
-        # 用於存儲連線的起始點
+        # 用於存儲拉線起點、臨時線條和正式連線
         self.start_dot = None
+        self.temp_line = None
+        self.lines = []
+
+        # 添加新的實例變數
+        self.current_line = None
+        self.last_mouse_pos = None
 
     def dragEnterEvent(self, event: QDragEnterEvent):
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
-            print("拖曳進入事件被接受")
         else:
             event.ignore()
-            print("拖曳進入事件被忽略")
 
     def dropEvent(self, event: QDropEvent):
         for url in event.mimeData().urls():
             file_path = url.toLocalFile()
-            if os.path.isfile(file_path):
-                print(f"拖曳的文件路徑: {file_path}")
-                if not file_path.lower().endswith((".png", ".jpg", ".jpeg", ".bmp", ".gif")):
-                    print("拖曳的文件不是支持的圖片格式")
-                    continue
+            if os.path.isfile(file_path) and file_path.lower().endswith((".png", ".jpg", ".jpeg", ".bmp", ".gif")):
                 self.handle_image_drop(file_path)
-            else:
-                print("無效的文件路徑")
 
     def handle_image_drop(self, file_path):
-        try:
-            detect_folder = get_resource_path('detect')
-            if not os.path.exists(detect_folder):
-                os.makedirs(detect_folder)
-                print(f"創建資料夾: {detect_folder}")
+        detect_folder = get_resource_path('detect')
+        if not os.path.exists(detect_folder):
+            os.makedirs(detect_folder)
 
-            file_name = os.path.basename(file_path)
-            destination_path = os.path.join(detect_folder, file_name)
-            shutil.copy(file_path, destination_path)
-            print(f"文件已複製到: {destination_path}")
+        file_name = os.path.basename(file_path)
+        destination_path = os.path.join(detect_folder, file_name)
+        shutil.copy(file_path, destination_path)
 
-            # 加載並顯示圖片
-            pixmap = QPixmap(destination_path)
-            if pixmap.isNull():
-                print("無法加載圖片，檢查圖片文件是否損壞")
-                return
+        pixmap = QPixmap(destination_path)
+        if pixmap.isNull():
+            return
 
-            # 創建可移動的圖片項目
-            pixmap_item = QGraphicsPixmapItem(pixmap)
-            pixmap_item.setFlag(QGraphicsPixmapItem.ItemIsMovable, True)  # 設置圖片為可移動
-            pixmap_item.setFlag(QGraphicsPixmapItem.ItemIsSelectable, True)  # 設置圖片為可選擇
-            self.graphics_scene.addItem(pixmap_item)
+        pixmap_item = QGraphicsPixmapItem(pixmap)
+        pixmap_item.setFlag(QGraphicsPixmapItem.ItemIsMovable, True)
+        pixmap_item.setFlag(QGraphicsPixmapItem.ItemIsSelectable, True)
+        self.graphics_scene.addItem(pixmap_item)
 
-            # 添加小白點
-            self.add_white_dots(pixmap_item)
+        # 添加小白點
+        self.add_white_dots(pixmap_item)
 
-            self.label.setText(f"已載入圖片: {file_name}")
-
-        except Exception as e:
-            print(f"處理圖片時發生錯誤: {e}")
+        self.label.setText(f"已載入圖片: {file_name}")
 
     def add_white_dots(self, pixmap_item):
         """在圖片的上下左右添加小白點"""
@@ -100,7 +88,6 @@ class TestView(QWidget):
         top_dot = QGraphicsRectItem(rect.width() / 2 - rect_size / 2, -rect_size / 2 - offset, rect_size, rect_size, pixmap_item)
         top_dot.setPen(pen)
         top_dot.setBrush(QColor("white"))
-        top_dot.setFlag(QGraphicsRectItem.ItemIsSelectable, True)
         top_dot.setData(0, "dot")  # 標記為小白點
         self.graphics_scene.addItem(top_dot)
 
@@ -108,7 +95,6 @@ class TestView(QWidget):
         bottom_dot = QGraphicsRectItem(rect.width() / 2 - rect_size / 2, rect.height() - rect_size / 2 + offset, rect_size, rect_size, pixmap_item)
         bottom_dot.setPen(pen)
         bottom_dot.setBrush(QColor("white"))
-        bottom_dot.setFlag(QGraphicsRectItem.ItemIsSelectable, True)
         bottom_dot.setData(0, "dot")
         self.graphics_scene.addItem(bottom_dot)
 
@@ -116,7 +102,6 @@ class TestView(QWidget):
         left_dot = QGraphicsRectItem(-rect_size / 2 - offset, rect.height() / 2 - rect_size / 2, rect_size, rect_size, pixmap_item)
         left_dot.setPen(pen)
         left_dot.setBrush(QColor("white"))
-        left_dot.setFlag(QGraphicsRectItem.ItemIsSelectable, True)
         left_dot.setData(0, "dot")
         self.graphics_scene.addItem(left_dot)
 
@@ -124,32 +109,80 @@ class TestView(QWidget):
         right_dot = QGraphicsRectItem(rect.width() - rect_size / 2 + offset, rect.height() / 2 - rect_size / 2, rect_size, rect_size, pixmap_item)
         right_dot.setPen(pen)
         right_dot.setBrush(QColor("white"))
-        right_dot.setFlag(QGraphicsRectItem.ItemIsSelectable, True)
         right_dot.setData(0, "dot")
         self.graphics_scene.addItem(right_dot)
 
     def mousePressEvent(self, event: QMouseEvent):
-        """處理小白點的點擊事件"""
-        item = self.graphics_scene.itemAt(self.graphics_view.mapToScene(event.pos()), self.graphics_view.transform())
+        """處理鼠標按下事件"""
+        scene_pos = self.graphics_view.mapToScene(event.pos())
+        item = self.graphics_scene.itemAt(scene_pos, self.graphics_view.transform())
+        
         if item and item.data(0) == "dot":
-            if self.start_dot is None:
-                self.start_dot = item
-            else:
-                # 繪製連線
+            # 點擊在小白點上，準備開始連線
+            self.start_dot = item
+            self.current_line = None
+        else:
+            # 如果未點擊在小白點上，允許拖動畫布
+            self.start_dot = None
+            self.current_line = None
+            self.last_mouse_pos = event.pos()
+        
+        event.accept()
+
+    def mouseMoveEvent(self, event: QMouseEvent):
+        """處理鼠標移動事件"""
+        if self.start_dot:
+            # 動態顯示連線
+            if self.current_line:
+                self.graphics_scene.removeItem(self.current_line)  # 移除舊的動態線條
+
+            start_pos = self.start_dot.mapToScene(self.start_dot.boundingRect().center())
+            end_pos = self.graphics_view.mapToScene(event.pos())
+            self.current_line = self.graphics_scene.addLine(
+                start_pos.x(), start_pos.y(), end_pos.x(), end_pos.y(), 
+                QPen(QColor("lightblue"), 1)
+            )
+        else:
+            # 拖動畫布
+            if self.last_mouse_pos:
+                delta = event.pos() - self.last_mouse_pos
+                self.graphics_view.horizontalScrollBar().setValue(
+                    self.graphics_view.horizontalScrollBar().value() - delta.x()
+                )
+                self.graphics_view.verticalScrollBar().setValue(
+                    self.graphics_view.verticalScrollBar().value() - delta.y()
+                )
+                self.last_mouse_pos = event.pos()
+        
+        event.accept()
+
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        """處理鼠標釋放事件"""
+        if self.start_dot:
+            # 完成連線
+            scene_pos = self.graphics_view.mapToScene(event.pos())
+            item = self.graphics_scene.itemAt(scene_pos, self.graphics_view.transform())
+            if item and item.data(0) == "dot" and item != self.start_dot:
+                # 繪製最終連線
                 start_pos = self.start_dot.mapToScene(self.start_dot.boundingRect().center())
                 end_pos = item.mapToScene(item.boundingRect().center())
-                line = self.graphics_scene.addLine(start_pos.x(), start_pos.y(),
-                                                   end_pos.x(), end_pos.y(),
-                                                   QPen(QColor("lightblue"), 2))
-                self.start_dot = None  # 重置起始點
+                self.graphics_scene.addLine(
+                    start_pos.x(), start_pos.y(), end_pos.x(), end_pos.y(), 
+                    QPen(QColor("blue"), 2)
+                )
+            
+            # 移除動態線條
+            if self.current_line:
+                self.graphics_scene.removeItem(self.current_line)
+            self.current_line = None
+            self.start_dot = None
+        else:
+            # 完成拖動畫布操作
+            self.last_mouse_pos = None
+        
+        event.accept()
 
     def wheelEvent(self, event: QWheelEvent):
         """使用滾輪放大縮小圖片"""
         factor = 1.2 if event.angleDelta().y() > 0 else 1 / 1.2
-        # 檢查是否有選中的圖片
-        selected_items = self.graphics_scene.selectedItems()
-        if selected_items:
-            for item in selected_items:
-                item.setScale(item.scale() * factor)
-        else:
-            self.graphics_view.scale(factor, factor)
+        self.graphics_view.scale(factor, factor)
