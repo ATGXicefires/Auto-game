@@ -18,10 +18,15 @@
 4. 在終端機輸入python src/modules/main.py 即可執行
 
 main.py 是主程式，負責整個程式的運行
+
 main_view.py 是主要視圖，負責視覺化
+
 ui_logic.py 是主視圖的邏輯，負責程式的運行
+
 function.py 是功能函式，負責功能實現
+
 log_view.py 是日誌視圖，負責日誌的顯示
+
 test_view.py 是測試視圖(目前還在試驗新東西)
 
 ### 這是高三專題實作，僅供學術研究使用
