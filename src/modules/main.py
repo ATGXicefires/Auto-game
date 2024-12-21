@@ -2,7 +2,7 @@ import sys
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QThread, Signal
 from main_view import MainWindow
-from functions import ensure_cache_directory, ensure_sv_json, ensure_detect_directory, clear_sv_json, Click_step_by_step, ADB_Click_step_by_step
+from functions import ensure_cache_directory, ensure_sv_json, ensure_detect_directory, clear_sv_json, Click_step_by_step, ADB_Click_step_by_step, initialize_setting_file
 
 class Worker(QThread):
     finished = Signal()
@@ -23,12 +23,10 @@ class Worker(QThread):
         self.finished.emit()
 
 if __name__ == "__main__":
-    # 確保 cache 目錄存在
     ensure_cache_directory()
     ensure_detect_directory()
-    # 確保 sv.json 文件存在
+    initialize_setting_file()
     ensure_sv_json()
-    # 清空 sv.json 文件
     clear_sv_json()
     # 創建 QApplication 實例
     app = QApplication(sys.argv)

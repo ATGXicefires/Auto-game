@@ -57,8 +57,23 @@ class MainWindow(QMainWindow):
             self.mode_button.setText("模式: ADB")
         else:
             self.mode_button.setText("模式: Windows")
-        # 每次切換模式時保存設置
-        self.save_mode_setting()
+        
+        # 保存當前模式到 setting.json
+        setting_path = get_resource_path('cache/setting.json')
+        try:
+            # 讀取現有設定
+            with open(setting_path, 'r', encoding='utf-8') as f:
+                settings = json.load(f)
+            
+            # 只更新 detect_mode，保留其他設定
+            settings['detect_mode'] = "ADB" if self.mode_button.isChecked() else "Windows"
+            
+            # 保存更新後的設定
+            with open(setting_path, 'w', encoding='utf-8') as f:
+                json.dump(settings, f, ensure_ascii=False, indent=4)
+            
+        except Exception as e:
+            self.log_view.append_log(f"保存模式設定時發生錯誤: {str(e)}")
 
     def toggle_view(self):
         """切換主視圖和日誌視圖"""
@@ -321,14 +336,25 @@ def update_json_with_input(main_window):
                     json.dump(data, f, ensure_ascii=False, indent=4)
                 print(f"Added new key: {new_key} with value from {main_window.current_image_key}")
 
-def toggle_mode(main_window):
-    if main_window.mode_button.isChecked():
-        main_window.mode_button.setText("模式: ADB")
-    else:
-        main_window.mode_button.setText("模式: Windows")
-    
-    # 保存當前模式到 setting.json
-    main_window.save_mode_setting()
-
+def clear_adb_settings(main_window):
+    """清除 ADB 設定"""
+    setting_path = get_resource_path('cache/setting.json')
+    if os.path.exists(setting_path):
+        try:
+            # 讀取現有設定
+            with open(setting_path, 'r', encoding='utf-8') as f:
+                settings = json.load(f)
+            
+            # 將 ADB IP 地址設定為空字串
+            settings['adb_ip_address'] = ""
+                
+            # 保存更新後的設定
+            with open(setting_path, 'w', encoding='utf-8') as f:
+                json.dump(settings, f, ensure_ascii=False, indent=4)
+            
+            main_window.log_view.append_log("已清除 ADB IP 設定")
+            
+        except Exception as e:
+            main_window.log_view.append_log(f"清除 ADB 設定時發生錯誤: {str(e)}")
 
 

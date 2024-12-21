@@ -48,11 +48,48 @@ def ensure_sv_json():
 
 def initialize_setting_file():
     json_path = get_resource_path('cache/setting.json')
+    directory = os.path.dirname(json_path)
+    
+    # 確保目錄存在
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    
+    default_settings = {
+        "detect_mode": "Windows",
+        "adb_ip_address": ""
+    }
+    
+    # 如果文件不存在或為空，直接創建新文件
     if not os.path.exists(json_path) or os.stat(json_path).st_size == 0:
-        # 初始化 setting.json 文件
         with open(json_path, 'w', encoding='utf-8') as f:
-            json.dump({"detect_mode": "Windows"}, f, ensure_ascii=False, indent=4)
+            json.dump(default_settings, f, ensure_ascii=False, indent=4)
         print(f"初始化了 setting.json 文件: {json_path}")
+    else:
+        # 如果文件存在，檢查是否包含所需的鍵值
+        try:
+            with open(json_path, 'r', encoding='utf-8') as f:
+                current_settings = json.load(f)
+            
+            # 檢查並添加缺失的鍵值
+            is_modified = False
+            for key in default_settings:
+                if key not in current_settings:
+                    current_settings[key] = default_settings[key]
+                    is_modified = True
+            
+            # 如果有修改，保存更新後的設定
+            if is_modified:
+                with open(json_path, 'w', encoding='utf-8') as f:
+                    json.dump(current_settings, f, ensure_ascii=False, indent=4)
+                print(f"更新了 setting.json 文件的缺失設定: {json_path}")
+                
+        except Exception as e:
+            print(f"讀取或更新 setting.json 時發生錯誤: {str(e)}")
+            # 如果發生錯誤，重新創建文件
+            with open(json_path, 'w', encoding='utf-8') as f:
+                json.dump(default_settings, f, ensure_ascii=False, indent=4)
+            print(f"重新創建了 setting.json 文件: {json_path}")
+    
     return json_path
 
 def get_resource_path(relative_path):
@@ -169,91 +206,93 @@ def match_template(template_path, log_view, confidence=0.9, timeout=30):
 
 def set_adb_connection(log_view, parent_widget):
     global selected_device_id
-    ip_addresses = [
-        "127.0.0.1:5555",
-        "127.0.0.1:16384",
-        "127.0.0.1:7555",
-        "127.0.0.1:21503",
-        "127.0.0.1:62001"
-    ]
+    
+    # 從 setting.json 讀取已保存的 IP 地址
+    setting_path = get_resource_path('cache/setting.json')
+    saved_ip = None
+    if os.path.exists(setting_path):
+        with open(setting_path, 'r', encoding='utf-8') as f:
+            settings = json.load(f)
+            saved_ip = settings.get('adb_ip_address')
 
-    max_attempts = 2
-
-    for attempt in range(max_attempts):
-        try:
-            # 列出所有設備
-            devices_output = subprocess.check_output('adb devices', shell=True).decode('utf-8')
-            log_view.append_log(devices_output)
-
-            # 解析設備列表
-            devices = [line.split()[0] for line in devices_output.splitlines() if 'device' in line]
-            if not devices:
-                log_view.append_log("沒有找到可用的設備")
-                continue
-
-            # 優先選擇出現在 ip_addresses 的位址
-            preferred_device_id = None
-            for ip in ip_addresses:
-                if ip in devices:
-                    preferred_device_id = ip
-                    break
-
-            # 如果沒有找到優先設備，選擇第一個偵測到的設備
-            if not preferred_device_id:
-                preferred_device_id = devices[0]
-
-            log_view.append_log(f"使用設備: {preferred_device_id}")
-
-            # 移除其他設備
-            for device in devices:
-                if device != preferred_device_id:
-                    subprocess.check_output(f'adb -s {device} disconnect', shell=True)
-                    log_view.append_log(f"移除設備: {device}")
-
-            # 設置選擇的設備 ID
-            selected_device_id = preferred_device_id
-
-            # 嘗試連接到優先設備
-            for ip_address in ip_addresses:
+    try:
+        # 獲取當前所有連接的設備
+        devices_output = subprocess.check_output('adb devices', shell=True).decode('utf-8')
+        devices = [line.split()[0] for line in devices_output.splitlines() if 'device' in line]
+        
+        # 如果沒有找到任何設備，嘗試連接常用端口
+        if not devices:
+            default_ports = ['5555', '16384', '7555', '21503', '62001']
+            for port in default_ports:
                 try:
-                    output = subprocess.check_output(f'adb -s {preferred_device_id} connect {ip_address}', shell=True, stderr=subprocess.STDOUT, timeout=30)
-                    log_view.append_log(output.decode('utf-8'))  # 記錄 ADB 連接的輸出訊息
-                    log_view.append_log(f"成功連接到 ADB: {ip_address}")
-                    return ip_address
-                except subprocess.CalledProcessError as e:
-                    log_view.append_log(f"連接 ADB 失敗: {e.output.decode('utf-8')}")
-                except subprocess.TimeoutExpired:
-                    log_view.append_log(f"連接 ADB 超時: {ip_address}")
+                    subprocess.check_output(
+                        f'adb connect 127.0.0.1:{port}', 
+                        shell=True, 
+                        stderr=subprocess.STDOUT,
+                        timeout=5
+                    )
+                except:
+                    continue
+            
+            # 重新獲取設備列表
+            devices_output = subprocess.check_output('adb devices', shell=True).decode('utf-8')
+            devices = [line.split()[0] for line in devices_output.splitlines() if 'device' in line]
 
-        except Exception as e:
-            log_view.append_log(f"獲取設備列表時出錯: {e}")
+        if not devices:
+            log_view.append_log("未找到可用的 ADB 設備")
+            return None
 
-        # 如果所有 IP 地址都無法連接，詢問用戶是否要手動輸入
-        reply = QMessageBox.question(
+        # 如果有已保存的 IP 且在可用設備列表中，將其放在列表最前面
+        if saved_ip and saved_ip in devices:
+            devices.remove(saved_ip)
+            devices.insert(0, saved_ip)
+
+        # 讓使用者選擇設備
+        text, ok = QInputDialog.getItem(
             parent_widget,
-            "ADB 連接失敗",
-            "無法連接到任何 ADB 位址。是否要手動輸入 ADB 位址？",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
+            "選擇 ADB 設備",
+            "請選擇要連接的 ADB 設備：",
+            devices,
+            0,  # 預設選擇第一項
+            False  # 不允許編輯，只能選擇已檢測到的設備
         )
 
-        if reply == QMessageBox.Yes:
-            # 使用 QInputDialog 讓用戶輸入 ADB 地址
-            text, ok = QInputDialog.getText(parent_widget, "手動輸入 ADB 地址", "請輸入 ADB 地址:")
-            if ok and text:
-                try:
-                    output = subprocess.check_output(f'adb -s {preferred_device_id} connect {text}', shell=True, stderr=subprocess.STDOUT, timeout=30)
-                    log_view.append_log(output.decode('utf-8'))  # 記錄 ADB 連接的輸出訊息
-                    log_view.append_log(f"成功連接到 ADB: {text}")
-                    selected_device_id = preferred_device_id
-                    return text
-                except subprocess.CalledProcessError as e:
-                    log_view.append_log(f"連接 ADB 失敗: {e.output.decode('utf-8')}")
-                except subprocess.TimeoutExpired:
-                    log_view.append_log(f"連接 ADB 超時: {text}")
+        if ok and text:
+            try:
+                # 嘗試連接選擇的設備
+                output = subprocess.check_output(
+                    f'adb connect {text}', 
+                    shell=True, 
+                    stderr=subprocess.STDOUT,
+                    timeout=30
+                )
+                log_view.append_log(output.decode('utf-8'))
 
-    log_view.append_log("ADB 連接出現預期外的問題")
-    print("ADB 連接出現預期外的問題")
+                # 確認連接是否成功
+                if text in devices:
+                    log_view.append_log(f"成功連接到 ADB: {text}")
+                    selected_device_id = text
+
+                    # 保存成功連接的設備到 setting.json
+                    with open(setting_path, 'r', encoding='utf-8') as f:
+                        settings = json.load(f)
+                    settings['adb_ip_address'] = text
+                    with open(setting_path, 'w', encoding='utf-8') as f:
+                        json.dump(settings, f, ensure_ascii=False, indent=4)
+
+                    return text
+                else:
+                    log_view.append_log(f"無法連接到 ADB: {text}")
+                    return None
+
+            except Exception as e:
+                log_view.append_log(f"連接 ADB 時發生錯誤: {str(e)}")
+                return None
+
+    except Exception as e:
+        log_view.append_log(f"檢測 ADB 設備時發生錯誤: {str(e)}")
+        return None
+
     return None
 
 # 獲取截圖存放的位置

@@ -1,7 +1,20 @@
 from PySide6.QtWidgets import QMainWindow, QTabWidget, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget, QLabel, QSlider, QLineEdit, QGraphicsView, QGraphicsScene
 from PySide6.QtGui import QFont, QPixmap, QPainter, QIntValidator
 from PySide6.QtCore import Qt, Signal, QThread
-from ui_logic import handle_file_selection, clear_json_file, clear_steps, on_preview_button_click, display_sorted_images, on_zoom_slider_change, show_context_menu, delete_selected_image, update_json_with_input, toggle_mode, display_image, clear_detect
+from ui_logic import (
+    handle_file_selection, 
+    clear_json_file, 
+    clear_steps, 
+    on_preview_button_click, 
+    display_sorted_images, 
+    on_zoom_slider_change, 
+    show_context_menu, 
+    delete_selected_image, 
+    update_json_with_input, 
+    display_image, 
+    clear_detect, 
+    clear_adb_settings
+)
 from functions import get_resource_path, load_json_variables, get_max_step_value, Click_step_by_step,ADB_match_template,set_adb_connection,ADB_Click_step_by_step
 from log_view import LogView
 from test_view import TestView
@@ -96,6 +109,14 @@ class MainWindow(QMainWindow):
         clear_detect_button.setFont(QFont("Arial", 14))  # 設置字體大小
         clear_detect_button.clicked.connect(self.clear_detect)
         left_layout.addWidget(clear_detect_button)
+
+        # 添加 "清除 ADB 設定" 按鈕
+        clear_adb_button = QPushButton("清除 ADB 設定", self)
+        clear_adb_button.setFixedWidth(fixed_width)  # 設置按鈕寬度
+        clear_adb_button.setFixedHeight(50)  # 設置按鈕高度
+        clear_adb_button.setFont(QFont("Arial", 14))  # 設置字體大小
+        clear_adb_button.clicked.connect(lambda: clear_adb_settings(self))
+        left_layout.addWidget(clear_adb_button)
 
         # 添加 "清除步驟" 按鈕
         clear_steps_button = QPushButton("清除已設置步驟", self)
@@ -293,11 +314,21 @@ class MainWindow(QMainWindow):
 
     def save_mode_setting(self):
         setting_path = get_resource_path('cache/setting.json')
-        mode = "ADB" if self.mode_button.isChecked() else "Windows"
-        settings = {'detect_mode': mode}
-        with open(setting_path, 'w', encoding='utf-8') as f:
-            json.dump(settings, f, ensure_ascii=False, indent=4)
-        self.log_view.append_log(f"模式已保存: {mode}")
+        try:
+            # 先讀取現有的設定
+            with open(setting_path, 'r', encoding='utf-8') as f:
+                settings = json.load(f)
+            
+            # 只更新 detect_mode，保留其他設定
+            settings['detect_mode'] = "ADB" if self.mode_button.isChecked() else "Windows"
+            
+            # 保存更新後的設定
+            with open(setting_path, 'w', encoding='utf-8') as f:
+                json.dump(settings, f, ensure_ascii=False, indent=4)
+            self.log_view.append_log(f"模式已保存: {settings['detect_mode']}")
+            
+        except Exception as e:
+            self.log_view.append_log(f"保存模式設定時發生錯誤: {str(e)}")
 
     def toggle_view(self):
         """切換主視圖和日誌視圖"""

@@ -1,3 +1,4 @@
 {
-    "detect_mode": "Windows"
+    "detect_mode": "Windows",
+    "adb_ip_address": "127.0.0.1:5555"
 }
