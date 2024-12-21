@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QApplication, QMainWindow, QGraphicsScene, QGraphicsView, QGraphicsEllipseItem, QGraphicsLineItem, QGraphicsPixmapItem, QVBoxLayout, QPushButton, QWidget, QMessageBox
 from PySide6.QtCore import Qt, QPointF, QLineF, QEvent
-from PySide6.QtGui import QPen, QMouseEvent, QPixmap, QDragEnterEvent, QDropEvent
+from PySide6.QtGui import QPen, QMouseEvent, QPixmap, QDragEnterEvent, QDropEvent, QPalette, QColor
 import sys
 import os
 
@@ -9,7 +9,7 @@ class Node(QGraphicsEllipseItem):
         super().__init__(-20, -20, 40, 40)
         self.setPos(x, y)
         self.setBrush(Qt.lightGray)
-        self.setFlag(QGraphicsEllipseItem.ItemIsMovable, False)  # 禁用節點移動
+        self.setFlag(QGraphicsEllipseItem.ItemIsMovable, True)
         self.setFlag(QGraphicsEllipseItem.ItemIsSelectable, True)
         self.setFlag(QGraphicsEllipseItem.ItemSendsScenePositionChanges, True)
         self.setAcceptDrops(True)  # 啟用拖放
@@ -35,6 +35,7 @@ class Node(QGraphicsEllipseItem):
         pen = QPen(Qt.white)
         pen.setWidth(2)
         line.setPen(pen)
+        line.setZValue(0)  # 設置連接線的 z-value 較低
         self.scene.addItem(line)
         self.connections.append((target_node, line))  # 同時儲存目標節點和線條
 
@@ -89,12 +90,18 @@ class Node(QGraphicsEllipseItem):
                         # 如果已經有圖片，則先移除
                         if self.pixmap_item:
                             self.scene.removeItem(self.pixmap_item)
-                        
+                            self.pixmap_item = None
+                            self.setBrush(Qt.lightGray)  # 恢復原本的刷子顏色
+
                         # 調整圖片大小以適應節點
                         pixmap = pixmap.scaled(40, 40, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                         self.pixmap_item = QGraphicsPixmapItem(pixmap, self)
                         self.pixmap_item.setOffset(-pixmap.width()/2, -pixmap.height()/2)
+                        self.pixmap_item.setZValue(1)  # 設置圖片的 z-value 較高
                         print(f"節點 {self.name} 已設置圖片: {file_path}")
+
+                        # 隱藏白點
+                        self.setBrush(Qt.transparent)
                         event.acceptProposedAction()
                         return
         event.ignore()
@@ -106,7 +113,7 @@ class MainWindow(QMainWindow):
 
         self.scene = QGraphicsScene()
         self.scene.setBackgroundBrush(Qt.black)
-        self.view = GraphicsViewWithPan(self.scene)  # 使用自訂的 GraphicsViewWithPan
+        self.view = GraphicsViewWithPan(self.scene)
 
         self.add_node_button = QPushButton("新增節點")
         self.add_node_button.clicked.connect(self.add_node)
@@ -114,10 +121,15 @@ class MainWindow(QMainWindow):
         self.execute_button = QPushButton("執行")
         self.execute_button.clicked.connect(self.execute_nodes)
 
+        # 新增「切換連線/移動模式」按鈕
+        self.toggle_mode_button = QPushButton("切換至連線模式")
+        self.toggle_mode_button.clicked.connect(self.toggle_connection_mode)
+
         self.layout = QVBoxLayout()
         self.layout.addWidget(self.view)
         self.layout.addWidget(self.add_node_button)
         self.layout.addWidget(self.execute_button)
+        self.layout.addWidget(self.toggle_mode_button)
 
         self.container = QWidget()
         self.container.setLayout(self.layout)
@@ -126,15 +138,39 @@ class MainWindow(QMainWindow):
         self.nodes = []
         self.temp_line = None
         self.start_node = None
-        self.is_connecting = False  # 追蹤是否正在連線
+
+        # 用來控制是否為「連線模式」
+        self.is_connection_mode = False
+        # 用來追蹤是否正在拖曳連線
+        self.is_connecting = False
 
         self.view.setMouseTracking(True)
         self.view.viewport().installEventFilter(self)
+
+    def toggle_connection_mode(self):
+        """
+        切換「連線模式」與「移動模式」：
+        - 連線模式: 節點無法被移動，只能拖曳建立連線
+        - 移動模式: 節點可被拖曳移動，無法建立連線
+        """
+        self.is_connection_mode = not self.is_connection_mode
+        if self.is_connection_mode:
+            self.toggle_mode_button.setText("切換至移動模式")
+            # 關閉節點可移動
+            for node in self.nodes:
+                node.setFlag(QGraphicsEllipseItem.ItemIsMovable, False)
+        else:
+            self.toggle_mode_button.setText("切換至連線模式")
+            # 開啟節點可移動
+            for node in self.nodes:
+                node.setFlag(QGraphicsEllipseItem.ItemIsMovable, True)
 
     def add_node(self):
         name = f"Node{len(self.nodes) + 1}"
         x, y = 100 + len(self.nodes) * 100, 300
         node = Node(name, x, y, self.scene)
+        # 初始狀態根據當前現況來決定是否可移動
+        node.setFlag(QGraphicsEllipseItem.ItemIsMovable, not self.is_connection_mode)
         self.nodes.append(node)
         print(f"新增節點 {name}，位置: ({x}, {y})")
 
@@ -151,37 +187,41 @@ class MainWindow(QMainWindow):
             scene_pos = self.view.mapToScene(event.pos())
 
             if event.type() == QEvent.MouseButtonPress and event.button() == Qt.LeftButton:
-                item = self.scene.itemAt(scene_pos, self.view.transform())
-                if isinstance(item, Node):
-                    self.start_node = item
-                    self.is_connecting = True  # 設置連線狀態
-                    # 創建預覽線條
-                    self.temp_line = QGraphicsLineItem()
-                    pen = QPen(Qt.white)
-                    pen.setStyle(Qt.DashLine)  # 虛線效果
-                    pen.setWidth(2)
-                    self.temp_line.setPen(pen)
-                    self.scene.addItem(self.temp_line)
-                    start_pos = self.start_node.scenePos()
-                    self.temp_line.setLine(start_pos.x(), start_pos.y(), scene_pos.x(), scene_pos.y())
+                # 只有在「連線模式」才建立連線
+                if self.is_connection_mode:
+                    item = self.scene.itemAt(scene_pos, self.view.transform())
+                    if isinstance(item, Node):
+                        self.start_node = item
+                        self.is_connecting = True
+                        # 創建預覽線條
+                        self.temp_line = QGraphicsLineItem()
+                        pen = QPen(Qt.white)
+                        pen.setStyle(Qt.DashLine)  # 虛線
+                        pen.setWidth(2)
+                        self.temp_line.setPen(pen)
+                        self.scene.addItem(self.temp_line)
+                        start_pos = self.start_node.scenePos()
+                        self.temp_line.setLine(start_pos.x(), start_pos.y(), scene_pos.x(), scene_pos.y())
 
-            elif event.type() == QEvent.MouseMove and self.is_connecting and self.temp_line:
-                # 更新預覽線條的終點
+            elif event.type() == QEvent.MouseMove and self.is_connection_mode and self.temp_line and self.start_node:
+                # 更新預覽線條終點
                 start_pos = self.start_node.scenePos()
                 self.temp_line.setLine(start_pos.x(), start_pos.y(), scene_pos.x(), scene_pos.y())
 
             elif event.type() == QEvent.MouseButtonRelease and event.button() == Qt.LeftButton:
-                if self.temp_line:
-                    self.scene.removeItem(self.temp_line)
-                    self.temp_line = None
+                if self.is_connection_mode:
+                    # 結束連線
+                    if self.temp_line:
+                        self.scene.removeItem(self.temp_line)
+                        self.temp_line = None
 
-                if self.is_connecting:
-                    end_item = self.scene.itemAt(scene_pos, self.view.transform())
-                    if isinstance(end_item, Node) and self.start_node and end_item != self.start_node:
-                        self.start_node.connect(end_item)
+                    if self.is_connecting:
+                        end_item = self.scene.itemAt(scene_pos, self.view.transform())
+                        if isinstance(end_item, Node) and self.start_node and end_item != self.start_node:
+                            self.start_node.connect(end_item)
 
-                self.start_node = None
-                self.is_connecting = False  # 重置連線狀態
+                    self.start_node = None
+                    self.is_connecting = False
 
         return super().eventFilter(source, event)
 
@@ -191,10 +231,39 @@ class GraphicsViewWithPan(QGraphicsView):  # 保持畫布可移動
         self._pan = False
         self._pan_start_x = 0
         self._pan_start_y = 0
+        self._space_pressed = False  # 用來追蹤是否按住空白鍵
         self.setDragMode(QGraphicsView.NoDrag)
+
+        # 若要讓視圖能接收鍵盤事件，需設定適當的 FocusPolicy
+        self.setFocusPolicy(Qt.StrongFocus)
+
+    def keyPressEvent(self, event):
+        # 偵測是否按住空白鍵
+        if event.key() == Qt.Key_Space:
+            self._space_pressed = True
+            # 當按住空白鍵時，如果還沒開始拖曳，顯示「OpenHandCursor」
+            if not self._pan:
+                self.setCursor(Qt.OpenHandCursor)
+        super().keyPressEvent(event)
+
+    def keyReleaseEvent(self, event):
+        # 偵測是否放開空白鍵
+        if event.key() == Qt.Key_Space:
+            self._space_pressed = False
+            # 如果當前非拖曳中，回復預設游標
+            if not self._pan:
+                self.setCursor(Qt.ArrowCursor)
+        super().keyReleaseEvent(event)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MiddleButton:
+            # 原本就有的中鍵拖曳邏輯
+            self._pan = True
+            self._pan_start_x = event.x()
+            self._pan_start_y = event.y()
+            self.setCursor(Qt.ClosedHandCursor)
+        # 新增邏輯：如果按住空白鍵 + 左鍵，也可以平移畫布
+        elif self._space_pressed and event.button() == Qt.LeftButton:
             self._pan = True
             self._pan_start_x = event.x()
             self._pan_start_y = event.y()
@@ -212,14 +281,80 @@ class GraphicsViewWithPan(QGraphicsView):  # 保持畫布可移動
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
-        if event.button() == Qt.MiddleButton:
+        # 當放開中鍵或左鍵時，結束拖曳
+        if self._pan and (event.button() == Qt.MiddleButton or event.button() == Qt.LeftButton):
             self._pan = False
-            self.setCursor(Qt.ArrowCursor)
+            # 如果空白鍵仍按住時，顯示「OpenHandCursor，否則回到箭頭游標
+            self.setCursor(Qt.OpenHandCursor if self._space_pressed else Qt.ArrowCursor)
         super().mouseReleaseEvent(event)
+
+    def wheelEvent(self, event):
+        # 如果按住 Ctrl 鍵，執行縮放，否則維持原行為
+        if QApplication.keyboardModifiers() == Qt.ControlModifier:
+            zoom_in_factor = 1.25
+            zoom_out_factor = 1 / zoom_in_factor
+            if event.angleDelta().y() > 0:
+                # 向上滾動 -> 放大
+                self.scale(zoom_in_factor, zoom_in_factor)
+                # 向下滾動 -> 縮小
+            else:
+            # 若沒有按住 Ctrl，則繼續執行預設的滾輪事件
+                self.scale(zoom_out_factor, zoom_out_factor)
+        else:
+            super().wheelEvent(event)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+
+    # 1. 設定 Fusion 風格
+    app.setStyle("Fusion")
+
+    # 2. 設定深色主題的 Palette（可自由調整色票）
+    dark_palette = QPalette()
+    dark_palette.setColor(QPalette.Window, QColor(53, 53, 53))
+    dark_palette.setColor(QPalette.WindowText, Qt.white)
+    dark_palette.setColor(QPalette.Base, QColor(35, 35, 35))
+    dark_palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+    dark_palette.setColor(QPalette.ToolTipBase, Qt.white)
+    dark_palette.setColor(QPalette.ToolTipText, Qt.white)
+    dark_palette.setColor(QPalette.Text, Qt.white)
+    dark_palette.setColor(QPalette.Button, QColor(53, 53, 53))
+    dark_palette.setColor(QPalette.ButtonText, Qt.white)
+    dark_palette.setColor(QPalette.BrightText, Qt.red)
+    dark_palette.setColor(QPalette.Link, QColor(42, 130, 218))
+    dark_palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
+    dark_palette.setColor(QPalette.HighlightedText, Qt.black)
+
+    app.setPalette(dark_palette)
+
+    # 3. 使用 StyleSheet 進一步修飾（可自行增減需要的元件樣式）
+    app.setStyleSheet("""
+        QWidget {
+            font-family: "Microsoft JhengHei";
+            font-size: 14px;
+        }
+        QToolTip {
+            color: #ffffff;
+            background-color: #2a2a2a;
+            border: 1px solid #3d3d3d;
+        }
+        QPushButton {
+            background-color: #5c5c5c;
+            border-radius: 4px;
+            padding: 5px;
+        }
+        QPushButton:hover {
+            background-color: #6c6c6c;
+        }
+        QGraphicsView {
+            border: 1px solid #3d3d3d;
+        }
+        QMessageBox {
+            background-color: #353535;
+        }
+    """)
+
     window = MainWindow()
-    window.resize(800, 600)
+    window.resize(1280, 720)
     window.show()
     sys.exit(app.exec())
