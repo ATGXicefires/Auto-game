@@ -1,6 +1,7 @@
 import sys
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QThread, Signal
+from PySide6.QtGui import QPalette, QColor, Qt
 from main_view import MainWindow
 from functions import ensure_cache_directory, ensure_sv_json, ensure_detect_directory, clear_sv_json, Click_step_by_step, ADB_Click_step_by_step, initialize_setting_file
 
@@ -30,6 +31,56 @@ if __name__ == "__main__":
     clear_sv_json()
     # 創建 QApplication 實例
     app = QApplication(sys.argv)
+
+    # 設定深色主題的 Palette（可自由調整色票）app = QApplication(sys.argv)
+    # 1. 設定 Fusion 風格
+    app.setStyle("Fusion")
+
+    # 2. 設定深色主題的 Palette（可自由調整色票）
+    dark_palette = QPalette()
+    dark_palette.setColor(QPalette.Window, QColor(53, 53, 53))
+    dark_palette.setColor(QPalette.WindowText, Qt.white)
+    dark_palette.setColor(QPalette.Base, QColor(35, 35, 35))
+    dark_palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+    dark_palette.setColor(QPalette.ToolTipBase, Qt.white)
+    dark_palette.setColor(QPalette.ToolTipText, Qt.white)
+    dark_palette.setColor(QPalette.Text, Qt.white)
+    dark_palette.setColor(QPalette.Button, QColor(53, 53, 53))
+    dark_palette.setColor(QPalette.ButtonText, Qt.white)
+    dark_palette.setColor(QPalette.BrightText, Qt.red)
+    dark_palette.setColor(QPalette.Link, QColor(42, 130, 218))
+    dark_palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
+    dark_palette.setColor(QPalette.HighlightedText, Qt.black)
+
+    app.setPalette(dark_palette)
+
+    # 3. 使用 StyleSheet 進一步修飾（可自行增減需要的元件樣式）
+    app.setStyleSheet("""
+        QWidget {
+            font-family: "Microsoft JhengHei";
+            font-size: 14px;
+        }
+        QToolTip {
+            color: #ffffff;
+            background-color: #2a2a2a;
+            border: 1px solid #3d3d3d;
+        }
+        QPushButton {
+            background-color: #5c5c5c;
+            border-radius: 4px;
+            padding: 5px;
+        }
+        QPushButton:hover {
+            background-color: #6c6c6c;
+        }
+        QGraphicsView {
+            border: 1px solid #3d3d3d;
+        }
+        QMessageBox {
+            background-color: #353535;
+        }
+    """)
+
     # 創建 MainWindow 的實例
     main_window = MainWindow()
     # 顯示主窗口
