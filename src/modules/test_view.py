@@ -1,49 +1,75 @@
+import math
+import shutil
+import os
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QGraphicsView, QGraphicsScene,
-    QMenu, QGraphicsLineItem, QGraphicsPixmapItem
+    QMenu, QGraphicsLineItem, QGraphicsPixmapItem, QGraphicsPolygonItem
 )
 from PySide6.QtGui import (
     QPixmap, QDragEnterEvent, QDropEvent, QFont, QWheelEvent,
-    QPen, QPainter, QMouseEvent, QContextMenuEvent, QKeyEvent
+    QPen, QPainter, QMouseEvent, QContextMenuEvent, QKeyEvent,
+    QPolygonF
 )
 from PySide6.QtCore import Qt, QPointF, QEvent
-import shutil
-import os
 from functions import get_resource_path
+
+class ArrowItem(QGraphicsPolygonItem):
+    """
+    小箭頭形狀，原點在箭頭尖端，往負 X 方向延伸。
+    這樣在旋轉時，0 度即指向右邊，角度沿逆時針方向正增。
+    """
+    def __init__(self):
+        super().__init__()
+        arrow_shape = QPolygonF([
+            QPointF(0, 0),
+            QPointF(-15, -8),
+            QPointF(-15, 8)
+        ])
+        self.setPolygon(arrow_shape)
+        self.setBrush(Qt.white)
+        self.setPen(QPen(Qt.white))
 
 class PixmapNode(QGraphicsPixmapItem):
     """
     自訂類別，承載 connections (所有連線)。
     一旦位置改變 (itemChange)，更新所有連線，使線條跟著移動。
-    每條連線會記錄：
-      (otherNode, lineObj, myOffset, otherOffset)
-    myOffset / otherOffset 用來儲存連線端在各自物件中的對應位置（local coordinate）。
+    connections: List[ (otherNode, lineObj, arrowObj, myOffset, otherOffset) ]
+       → (對方的 PixmapNode, 連線物件, 箭頭物件, 我方 local_offset, 對方 local_offset)
     """
     def __init__(self, pixmap):
         super().__init__(pixmap)
         self.setFlag(QGraphicsPixmapItem.ItemSendsScenePositionChanges, True)
-        # connections: List[ (PixmapNode, QGraphicsLineItem, QPointF, QPointF) ]
-        #   → (對象, 線條物件, 我方 local_offset, 對方 local_offset)
         self.connections = []
 
     def itemChange(self, change, value):
         if change == QGraphicsPixmapItem.ItemPositionChange:
-            # 當自己的位置改變時，更新所有連線
-            for otherNode, lineObj, myOffset, otherOffset in self.connections:
-                self.updateLine(lineObj, otherNode, myOffset, otherOffset)
+            for otherNode, lineObj, arrowObj, myOffset, otherOffset in self.connections:
+                self.updateLineAndArrow(lineObj, arrowObj, otherNode, myOffset, otherOffset)
         return super().itemChange(change, value)
 
-    def updateLine(self, lineObj, otherNode, myOffset, theirOffset):
+    def updateLineAndArrow(self, lineObj, arrowObj, otherNode, myOffset, theirOffset):
         """
-        根據自己和 otherNode 的 offset，各自 mapToScene() 得到實際場景座標，
-        並更新線段端點。
+        動態更新線條端點和箭頭位置與角度，使其指向「由自己 → otherNode」。
         """
         my_point_in_scene = self.mapToScene(myOffset)
         their_point_in_scene = otherNode.mapToScene(theirOffset)
+
+        # 更新線條
         lineObj.setLine(
             my_point_in_scene.x(), my_point_in_scene.y(),
             their_point_in_scene.x(), their_point_in_scene.y()
         )
+
+        # 箭頭擺在中點
+        mid_x = (my_point_in_scene.x() + their_point_in_scene.x()) / 2
+        mid_y = (my_point_in_scene.y() + their_point_in_scene.y()) / 2
+        arrowObj.setPos(mid_x, mid_y)
+
+        # 算出角度，atan2(dy, dx) 傳回弧度，轉度數後再套用
+        dx = their_point_in_scene.x() - my_point_in_scene.x()
+        dy = their_point_in_scene.y() - my_point_in_scene.y()
+        angle_deg = math.degrees(math.atan2(dy, dx))
+        arrowObj.setRotation(angle_deg)
 
 class TestView(QWidget):
     def __init__(self, parent=None):
@@ -72,8 +98,8 @@ class TestView(QWidget):
         # 連線模式
         self.is_connection_mode = False
         self.is_connecting = False
-        self.start_item = None       # 儲存連線起始物件 (PixmapNode)
-        self.start_offset = QPointF()  # 儲存點擊在 start_item 上的相對位置
+        self.start_item = None       # 儲存連線起始 PixmapNode
+        self.start_offset = QPointF()  # 該 PixmapNode 上的 local offset
         self.temp_line = None
 
         # 監聽事件
@@ -104,33 +130,29 @@ class TestView(QWidget):
                     item.setFlag(QGraphicsPixmapItem.ItemIsMovable, True)
 
     def eventFilter(self, watched, event):
-        """
-        在「連線模式」下，用滑鼠左鍵完成連線。
-        暫時線起始點将對應使用者實際點擊的位置 (start_offset)，而非固定在中心。
-        """
         if watched == self.graphics_view.viewport() and isinstance(event, QMouseEvent):
             scene_pos = self.graphics_view.mapToScene(event.pos())
 
+            # 僅在連線模式下處理
             if self.is_connection_mode:
                 if event.type() == QEvent.MouseButtonPress and event.button() == Qt.LeftButton:
                     item = self.graphics_scene.itemAt(scene_pos, self.graphics_view.transform())
                     if isinstance(item, PixmapNode):
+                        # 記錄起始物件與使用者點擊的位置 (local offset)
                         self.start_item = item
+                        self.start_offset = item.mapFromScene(scene_pos)
                         self.is_connecting = True
 
-                        # 記錄按下點擊在該 item 上的「本地座標」
-                        # mapFromScene()：把「場景座標」轉換到 item 的本地座標系
-                        self.start_offset = item.mapFromScene(scene_pos)
-
-                        # 建立暫時線（虛線）
+                        # 建立暫時線
                         self.temp_line = QGraphicsLineItem()
                         pen = QPen(Qt.white)
                         pen.setStyle(Qt.DashLine)
                         pen.setWidth(4)
+                        # 確保非 cosmetic，會跟隨縮放 (預設已有可能是False，但這裡明確指定)
+                        pen.setCosmetic(False)
                         self.temp_line.setPen(pen)
                         self.graphics_scene.addItem(self.temp_line)
 
-                        # 暫時線的端點：從「起始物件上的點擊處」綁定到「當前滑鼠位置」
                         start_scene_pt = item.mapToScene(self.start_offset)
                         self.temp_line.setLine(
                             start_scene_pt.x(),
@@ -140,7 +162,6 @@ class TestView(QWidget):
                         )
 
                 elif event.type() == QEvent.MouseMove and self.is_connecting and self.temp_line and self.start_item:
-                    # 動態更新暫時線
                     start_scene_pt = self.start_item.mapToScene(self.start_offset)
                     self.temp_line.setLine(
                         start_scene_pt.x(),
@@ -150,7 +171,6 @@ class TestView(QWidget):
                     )
 
                 elif event.type() == QEvent.MouseButtonRelease and event.button() == Qt.LeftButton:
-                    # 結束暫時線
                     if self.temp_line:
                         self.graphics_scene.removeItem(self.temp_line)
                         self.temp_line = None
@@ -158,41 +178,56 @@ class TestView(QWidget):
                     if self.is_connecting:
                         end_item = self.graphics_scene.itemAt(scene_pos, self.graphics_view.transform())
                         if isinstance(end_item, PixmapNode) and end_item != self.start_item:
-                            # 連線成功，同樣記住 end_item 上的對應座標
                             end_offset = end_item.mapFromScene(scene_pos)
-                            self.connectTwoItems(self.start_item, self.start_offset,
-                                                 end_item, end_offset)
-                            self.label.setText("圖片已連線")
+                            self.connectTwoItems(self.start_item, self.start_offset, end_item, end_offset)
+                            self.label.setText("已建立連線")
                         else:
                             self.label.setText("取消連線")
 
-                    # 重置起始物件狀態
                     self.start_item = None
                     self.is_connecting = False
+
         return super().eventFilter(watched, event)
 
     def connectTwoItems(self, itemA: PixmapNode, offsetA: QPointF,
                         itemB: PixmapNode, offsetB: QPointF):
         """
-        在場景上繪製「終版連線」的實線，
-        並記住彼此連線關係 + 端點相對位置 (offsetA, offsetB)。
+        建立「A -> B」的實線與箭頭，並記錄端點對應的 local offset。
+        同時確保線條非 cosmetic，讓它能跟隨場景縮放。
         """
-        # 將 offsetA / offsetB 轉換成場景座標，確定線起點與終點
+        # 計算 A / B 對應點的世界座標，用來畫線
         a_in_scene = itemA.mapToScene(offsetA)
         b_in_scene = itemB.mapToScene(offsetB)
 
+        # 畫實線
         line = QGraphicsLineItem()
-        line.setZValue(-1)  # 讓線位於圖片之下
+        line.setZValue(-1)
         pen = QPen(Qt.white)
         pen.setWidth(4)
+        pen.setCosmetic(False)  # 關鍵：確保線條非 cosmetic，會跟隨縮放
         line.setPen(pen)
         line.setLine(a_in_scene.x(), a_in_scene.y(),
                      b_in_scene.x(), b_in_scene.y())
         self.graphics_scene.addItem(line)
 
-        # 雙向記錄連線：各自存自己的 offset 以及對象的 offset
-        itemA.connections.append((itemB, line, offsetA, offsetB))
-        itemB.connections.append((itemA, line, offsetB, offsetA))
+        # 建立箭頭
+        arrow = ArrowItem()
+        arrow.setZValue(0)  # 顯示在線條之上
+        # 不設定忽略變形 (ItemIgnoresTransformations=False)，讓箭頭也可以跟隨縮放
+        self.graphics_scene.addItem(arrow)
+
+        # 箭頭初始位置與角度
+        mid_x = (a_in_scene.x() + b_in_scene.x()) / 2
+        mid_y = (a_in_scene.y() + b_in_scene.y()) / 2
+        arrow.setPos(mid_x, mid_y)
+        dx = b_in_scene.x() - a_in_scene.x()
+        dy = b_in_scene.y() - a_in_scene.y()
+        angle_deg = math.degrees(math.atan2(dy, dx))
+        arrow.setRotation(angle_deg)
+
+        # 雙向記錄連線 (多半只需要 A->B 的箭頭，但可依需求同時做 B->A)
+        itemA.connections.append((itemB, line, arrow, offsetA, offsetB))
+        # itemB.connections.append(...) # 若需要反向箭頭，可在此補上
 
     def dragEnterEvent(self, event: QDragEnterEvent):
         if event.mimeData().hasUrls():
@@ -219,15 +254,17 @@ class TestView(QWidget):
         if pixmap.isNull():
             return
 
-        # 使用 PixmapNode
         pixmap_node = PixmapNode(pixmap)
         pixmap_node.setFlag(QGraphicsPixmapItem.ItemIsMovable, not self.is_connection_mode)
         pixmap_node.setFlag(QGraphicsPixmapItem.ItemIsSelectable, True)
-
         self.graphics_scene.addItem(pixmap_node)
+
         self.label.setText(f"已載入圖片: {file_name}")
 
     def wheelEvent(self, event: QWheelEvent):
+        """
+        使用滾輪放大縮小。由於線條與箭頭不是 cosmetic，所以會跟隨場景同步縮放。
+        """
         factor = 1.2 if event.angleDelta().y() > 0 else 1 / 1.2
         self.graphics_view.scale(factor, factor)
 
