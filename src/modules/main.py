@@ -58,7 +58,7 @@ if __name__ == "__main__":
     app.setStyleSheet("""
         QWidget {
             font-family: "Microsoft JhengHei";
-            font-size: 14px;
+            font-size: 16px;
         }
         QToolTip {
             color: #ffffff;
