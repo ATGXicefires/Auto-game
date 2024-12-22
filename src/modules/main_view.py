@@ -15,9 +15,17 @@ from ui_logic import (
     clear_detect, 
     clear_adb_settings
 )
-from functions import get_resource_path, load_json_variables, get_max_step_value, Click_step_by_step,ADB_match_template,set_adb_connection,ADB_Click_step_by_step
+from functions import (
+    get_resource_path, 
+    load_json_variables,
+    get_max_step_value,
+    Click_step_by_step,
+    ADB_match_template,
+    set_adb_connection,
+    ADB_Click_step_by_step
+)
 from log_view import LogView
-from test_view import TestView
+from process_view import ProcessView
 import os
 import json
 
@@ -74,12 +82,12 @@ class MainWindow(QMainWindow):
         # 創建主視圖和日誌視圖
         self.main_widget = QWidget()
         self.log_view = LogView(self)
-        self.test_view = TestView(self)
+        self.process_view = ProcessView(self)
 
         # 添加主視圖和日誌視圖到頁籤
         self.tabs.addTab(self.main_widget, "主視圖")
         self.tabs.addTab(self.log_view, "日誌視圖")
-        self.tabs.addTab(self.test_view, "測試視圖")
+        self.tabs.addTab(self.process_view, "流程視圖")
 
         # 設置主視圖的佈局
         self.setup_main_view()

@@ -71,9 +71,9 @@ class PixmapNode(QGraphicsPixmapItem):
         angle_deg = math.degrees(math.atan2(dy, dx))
         arrowObj.setRotation(angle_deg)
 
-class TestView(QWidget):
+class ProcessView(QWidget):
     def __init__(self, parent=None):
-        super(TestView, self).__init__(parent)
+        super(ProcessView, self).__init__(parent)
         self.setAcceptDrops(True)  # 啟用拖放功能
 
         main_layout = QVBoxLayout(self)
