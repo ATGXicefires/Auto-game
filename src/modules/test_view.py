@@ -6,7 +6,7 @@ from PySide6.QtGui import (
     QPixmap, QDragEnterEvent, QDropEvent, QFont, QWheelEvent,
     QPen, QPainter, QMouseEvent, QContextMenuEvent, QKeyEvent
 )
-from PySide6.QtCore import Qt, QPointF, QEvent, QRectF
+from PySide6.QtCore import Qt, QPointF, QEvent
 import shutil
 import os
 from functions import get_resource_path
@@ -14,33 +14,35 @@ from functions import get_resource_path
 class PixmapNode(QGraphicsPixmapItem):
     """
     自訂類別，承載 connections (所有連線)。
-    一旦位置改變，即更新每一條連線，使線條跟著移動。
+    一旦位置改變 (itemChange)，更新所有連線，使線條跟著移動。
+    每條連線會記錄：
+      (otherNode, lineObj, myOffset, otherOffset)
+    myOffset / otherOffset 用來儲存連線端在各自物件中的對應位置（local coordinate）。
     """
     def __init__(self, pixmap):
         super().__init__(pixmap)
         self.setFlag(QGraphicsPixmapItem.ItemSendsScenePositionChanges, True)
-        self.connections = []  # [(另一個 PixmapNode, QGraphicsLineItem), ...]
+        # connections: List[ (PixmapNode, QGraphicsLineItem, QPointF, QPointF) ]
+        #   → (對象, 線條物件, 我方 local_offset, 對方 local_offset)
+        self.connections = []
 
     def itemChange(self, change, value):
         if change == QGraphicsPixmapItem.ItemPositionChange:
-            # 當圖片位置變化時，更新所有連線
-            for otherNode, lineObj in self.connections:
-                self.updateLine(lineObj, otherNode)
+            # 當自己的位置改變時，更新所有連線
+            for otherNode, lineObj, myOffset, otherOffset in self.connections:
+                self.updateLine(lineObj, otherNode, myOffset, otherOffset)
         return super().itemChange(change, value)
 
-    def updateLine(self, lineObj, otherNode):
+    def updateLine(self, lineObj, otherNode, myOffset, theirOffset):
         """
-        根據自己 (self) 與 otherNode 的「中心座標」，更新 lineObj 的線段位置。
+        根據自己和 otherNode 的 offset，各自 mapToScene() 得到實際場景座標，
+        並更新線段端點。
         """
-        my_center = self.sceneBoundingRect().center()
-        my_center_in_scene = self.mapToScene(my_center)
-
-        other_center = otherNode.sceneBoundingRect().center()
-        other_center_in_scene = otherNode.mapToScene(other_center)
-
+        my_point_in_scene = self.mapToScene(myOffset)
+        their_point_in_scene = otherNode.mapToScene(theirOffset)
         lineObj.setLine(
-            my_center_in_scene.x(), my_center_in_scene.y(),
-            other_center_in_scene.x(), other_center_in_scene.y()
+            my_point_in_scene.x(), my_point_in_scene.y(),
+            their_point_in_scene.x(), their_point_in_scene.y()
         )
 
 class TestView(QWidget):
@@ -70,7 +72,8 @@ class TestView(QWidget):
         # 連線模式
         self.is_connection_mode = False
         self.is_connecting = False
-        self.start_item = None  # PixmapNode
+        self.start_item = None       # 儲存連線起始物件 (PixmapNode)
+        self.start_offset = QPointF()  # 儲存點擊在 start_item 上的相對位置
         self.temp_line = None
 
         # 監聽事件
@@ -101,6 +104,10 @@ class TestView(QWidget):
                     item.setFlag(QGraphicsPixmapItem.ItemIsMovable, True)
 
     def eventFilter(self, watched, event):
+        """
+        在「連線模式」下，用滑鼠左鍵完成連線。
+        暫時線起始點将對應使用者實際點擊的位置 (start_offset)，而非固定在中心。
+        """
         if watched == self.graphics_view.viewport() and isinstance(event, QMouseEvent):
             scene_pos = self.graphics_view.mapToScene(event.pos())
 
@@ -110,7 +117,12 @@ class TestView(QWidget):
                     if isinstance(item, PixmapNode):
                         self.start_item = item
                         self.is_connecting = True
-                        # 建立暫時線
+
+                        # 記錄按下點擊在該 item 上的「本地座標」
+                        # mapFromScene()：把「場景座標」轉換到 item 的本地座標系
+                        self.start_offset = item.mapFromScene(scene_pos)
+
+                        # 建立暫時線（虛線）
                         self.temp_line = QGraphicsLineItem()
                         pen = QPen(Qt.white)
                         pen.setStyle(Qt.DashLine)
@@ -118,59 +130,69 @@ class TestView(QWidget):
                         self.temp_line.setPen(pen)
                         self.graphics_scene.addItem(self.temp_line)
 
-                        start_center = self.start_item.sceneBoundingRect().center()
-                        start_center_in_scene = self.start_item.mapToScene(start_center)
+                        # 暫時線的端點：從「起始物件上的點擊處」綁定到「當前滑鼠位置」
+                        start_scene_pt = item.mapToScene(self.start_offset)
                         self.temp_line.setLine(
-                            start_center_in_scene.x(),
-                            start_center_in_scene.y(),
+                            start_scene_pt.x(),
+                            start_scene_pt.y(),
                             scene_pos.x(),
                             scene_pos.y()
                         )
 
                 elif event.type() == QEvent.MouseMove and self.is_connecting and self.temp_line and self.start_item:
-                    start_center = self.start_item.sceneBoundingRect().center()
-                    start_center_in_scene = self.start_item.mapToScene(start_center)
+                    # 動態更新暫時線
+                    start_scene_pt = self.start_item.mapToScene(self.start_offset)
                     self.temp_line.setLine(
-                        start_center_in_scene.x(),
-                        start_center_in_scene.y(),
+                        start_scene_pt.x(),
+                        start_scene_pt.y(),
                         scene_pos.x(),
                         scene_pos.y()
                     )
 
                 elif event.type() == QEvent.MouseButtonRelease and event.button() == Qt.LeftButton:
+                    # 結束暫時線
                     if self.temp_line:
                         self.graphics_scene.removeItem(self.temp_line)
                         self.temp_line = None
+
                     if self.is_connecting:
                         end_item = self.graphics_scene.itemAt(scene_pos, self.graphics_view.transform())
                         if isinstance(end_item, PixmapNode) and end_item != self.start_item:
-                            self.connectTwoItems(self.start_item, end_item)
+                            # 連線成功，同樣記住 end_item 上的對應座標
+                            end_offset = end_item.mapFromScene(scene_pos)
+                            self.connectTwoItems(self.start_item, self.start_offset,
+                                                 end_item, end_offset)
                             self.label.setText("圖片已連線")
                         else:
                             self.label.setText("取消連線")
+
+                    # 重置起始物件狀態
                     self.start_item = None
                     self.is_connecting = False
         return super().eventFilter(watched, event)
 
-    def connectTwoItems(self, itemA: PixmapNode, itemB: PixmapNode):
+    def connectTwoItems(self, itemA: PixmapNode, offsetA: QPointF,
+                        itemB: PixmapNode, offsetB: QPointF):
         """
-        在場景上繪製實線，並雙向紀錄連線。
+        在場景上繪製「終版連線」的實線，
+        並記住彼此連線關係 + 端點相對位置 (offsetA, offsetB)。
         """
-        a_center_in_scene = itemA.mapToScene(itemA.boundingRect().center())
-        b_center_in_scene = itemB.mapToScene(itemB.boundingRect().center())
+        # 將 offsetA / offsetB 轉換成場景座標，確定線起點與終點
+        a_in_scene = itemA.mapToScene(offsetA)
+        b_in_scene = itemB.mapToScene(offsetB)
 
         line = QGraphicsLineItem()
-        line.setZValue(-1)
+        line.setZValue(-1)  # 讓線位於圖片之下
         pen = QPen(Qt.white)
         pen.setWidth(4)
         line.setPen(pen)
-        line.setLine(a_center_in_scene.x(), a_center_in_scene.y(),
-                     b_center_in_scene.x(), b_center_in_scene.y())
+        line.setLine(a_in_scene.x(), a_in_scene.y(),
+                     b_in_scene.x(), b_in_scene.y())
         self.graphics_scene.addItem(line)
 
-        # 雙向記錄連線
-        itemA.connections.append((itemB, line))
-        itemB.connections.append((itemA, line))
+        # 雙向記錄連線：各自存自己的 offset 以及對象的 offset
+        itemA.connections.append((itemB, line, offsetA, offsetB))
+        itemB.connections.append((itemA, line, offsetB, offsetA))
 
     def dragEnterEvent(self, event: QDragEnterEvent):
         if event.mimeData().hasUrls():
@@ -197,14 +219,12 @@ class TestView(QWidget):
         if pixmap.isNull():
             return
 
-        # 使用 PixmapNode 而非 QGraphicsPixmapItem
+        # 使用 PixmapNode
         pixmap_node = PixmapNode(pixmap)
-        # 依目前模式，決定是否可拖曳
         pixmap_node.setFlag(QGraphicsPixmapItem.ItemIsMovable, not self.is_connection_mode)
         pixmap_node.setFlag(QGraphicsPixmapItem.ItemIsSelectable, True)
 
         self.graphics_scene.addItem(pixmap_node)
-
         self.label.setText(f"已載入圖片: {file_name}")
 
     def wheelEvent(self, event: QWheelEvent):
