@@ -1,4 +1,18 @@
-from PySide6.QtWidgets import QApplication, QMainWindow, QGraphicsScene, QGraphicsView, QGraphicsEllipseItem, QGraphicsLineItem, QGraphicsPixmapItem, QVBoxLayout, QPushButton, QWidget, QMessageBox
+from PySide6.QtWidgets import (
+    QApplication,
+    QMainWindow,
+    QGraphicsScene,
+    QGraphicsView,
+    QGraphicsEllipseItem,
+    QGraphicsLineItem,
+    QGraphicsPixmapItem,
+    QVBoxLayout,
+    QPushButton,
+    QWidget,
+    QMessageBox,
+    QMenu
+)
+from PySide6.QtGui import QAction
 from PySide6.QtCore import Qt, QPointF, QLineF, QEvent
 from PySide6.QtGui import QPen, QMouseEvent, QPixmap, QDragEnterEvent, QDropEvent, QPalette, QColor
 import sys
@@ -105,6 +119,33 @@ class Node(QGraphicsEllipseItem):
                         event.acceptProposedAction()
                         return
         event.ignore()
+
+    def contextMenuEvent(self, event):
+        """
+        當使用者在節點上按下右鍵時觸發。
+        這裡建立一組連線清單，讓使用者選擇想連線的對象。
+        """
+        menu = QMenu()
+        # 產生「Connect To」的子選單
+        connect_menu = menu.addMenu("Connect to...")
+        self.create_connection_menu(connect_menu)
+
+        # 顯示選單，並讓使用者選擇
+        menu.exec_(event.screenPos())
+
+    def create_connection_menu(self, menu: QMenu):
+        """
+        創建所有可能可以連線的節點選項，並將動作綁定到連線函式。
+        """
+        # 這裡假設我們可從 self.scene.items() (或從 MainWindow 傳進所有節點清單) 取得所有節點
+        all_items = self.scene.items()
+        for item in all_items:
+            if isinstance(item, Node) and item != self:
+                node_name = item.name
+                action = QAction(f"{node_name}", menu)
+                # 連線的邏輯：點擊後呼叫 self.connect(item)
+                action.triggered.connect(lambda checked, target_node=item: self.connect(target_node))
+                menu.addAction(action)
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -254,7 +295,7 @@ class GraphicsViewWithPan(QGraphicsView):  # 保持畫布可移動
         # 偵測是否按住空白鍵
         if event.key() == Qt.Key_Space:
             self._space_pressed = True
-            # 當按住空白鍵時，如果還沒開始拖曳，顯示��OpenHandCursor」
+            # 當按住空白鍵時，如果還沒開始拖曳，顯示OpenHandCursor」
             if not self._pan:
                 self.setCursor(Qt.OpenHandCursor)
         super().keyPressEvent(event)
