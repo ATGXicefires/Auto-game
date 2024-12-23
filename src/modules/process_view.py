@@ -557,6 +557,7 @@ class ProcessView(QWidget):
             node_map = {}
             detect_folder = get_resource_path('detect')
             
+            # 第一步：建立所有節點
             for file_name, data in connections_data.items():
                 file_path = os.path.join(detect_folder, file_name)
                 if os.path.exists(file_path):
@@ -580,21 +581,32 @@ class ProcessView(QWidget):
                         if not items:
                             self.list_widget.addItem(file_name)
             
-            # 重建連線
+            # 第二步：建立連線（只處理 from->to 的方向）
+            processed_connections = set()  # 用來追蹤已處理的連線
             for file_name, data in connections_data.items():
                 if file_name in node_map:
                     source_node = node_map[file_name]
                     for conn in data.get('connections', []):
-                        target_file = conn['to']
-                        if target_file in node_map:
-                            target_node = node_map[target_file]
-                            # 使用預設的偏移量建立連線
+                        from_file = conn['from']
+                        to_file = conn['to']
+                        
+                        # 確保只處理一次連線
+                        connection_key = tuple(sorted([from_file, to_file]))
+                        if connection_key in processed_connections:
+                            continue
+                        
+                        if from_file in node_map and to_file in node_map:
+                            from_node = node_map[from_file]
+                            to_node = node_map[to_file]
+                            
+                            # 建立連線，箭頭從 from 指向 to
                             self.connectTwoItems(
-                                source_node, 
-                                QPointF(source_node.boundingRect().center()),
-                                target_node, 
-                                QPointF(target_node.boundingRect().center())
+                                from_node,
+                                QPointF(from_node.boundingRect().center()),
+                                to_node,
+                                QPointF(to_node.boundingRect().center())
                             )
+                            processed_connections.add(connection_key)
             
             self.label.setText(f"已載入連線關係和位置: {os.path.basename(json_path)}")
         except Exception as e:
