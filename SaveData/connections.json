@@ -1,1 +1,56 @@
-{}
+{
+    "IMG_4977.JPG": {
+        "position": {
+            "x": 4569.46708119552,
+            "y": 460.5275956838399
+        },
+        "connections": [
+            {
+                "from": "IMG_4977.JPG",
+                "to": "106447193_p0_master1200.jpg"
+            },
+            {
+                "from": "IMG_4977.JPG",
+                "to": "202204-貝.png"
+            }
+        ]
+    },
+    "bg.png": {
+        "position": {
+            "x": -79.97659545600004,
+            "y": 3114.4434204671984
+        },
+        "connections": [
+            {
+                "from": "bg.png",
+                "to": "202204-貝.png"
+            }
+        ]
+    },
+    "106447193_p0_master1200.jpg": {
+        "position": {
+            "x": 1985.2082911641596,
+            "y": 448.55690526719985
+        },
+        "connections": [
+            {
+                "from": "106447193_p0_master1200.jpg",
+                "to": "3f53bfffgy1hw272g5ktuj20u01hcdxi.jpg"
+            }
+        ]
+    },
+    "202204-貝.png": {
+        "position": {
+            "x": 3228.1305808895986,
+            "y": 2805.4069759180793
+        },
+        "connections": []
+    },
+    "3f53bfffgy1hw272g5ktuj20u01hcdxi.jpg": {
+        "position": {
+            "x": -534.9660268953597,
+            "y": 512.6757757747198
+        },
+        "connections": []
+    }
+}

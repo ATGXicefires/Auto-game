@@ -3,7 +3,7 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QThread, Signal
 from PySide6.QtGui import QPalette, QColor, Qt
 from main_view import MainWindow
-from functions import ensure_cache_directory, ensure_sv_json, ensure_detect_directory, clear_sv_json, Click_step_by_step, ADB_Click_step_by_step, initialize_setting_file, initialize_connections_file
+from functions import ensure_cache_directory, ensure_sv_json, ensure_detect_directory, clear_sv_json, Click_step_by_step, ADB_Click_step_by_step, initialize_setting_file, initialize_connections_file, ensure_save_data_directory
 
 class Worker(QThread):
     finished = Signal()
@@ -26,6 +26,7 @@ class Worker(QThread):
 if __name__ == "__main__":
     ensure_cache_directory()
     ensure_detect_directory()
+    ensure_save_data_directory()
     initialize_setting_file()
     initialize_connections_file()
     ensure_sv_json()

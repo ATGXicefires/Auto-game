@@ -5,7 +5,7 @@ import json
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QLabel, QGraphicsView, QGraphicsScene,
     QMenu, QGraphicsLineItem, QGraphicsPixmapItem, QGraphicsPolygonItem,
-    QListWidget, QPushButton, QMessageBox, QInputDialog
+    QListWidget, QPushButton, QMessageBox, QInputDialog, QLineEdit
 )
 from PySide6.QtGui import (
     QPixmap, QDragEnterEvent, QDropEvent, QFont, QWheelEvent,
@@ -463,7 +463,7 @@ class ProcessView(QWidget):
             msgBox.setText("已存在專案存檔")
             msgBox.setInformativeText("要建立新專案還是覆蓋現有專案？")
             newButton = msgBox.addButton("建立新專案", QMessageBox.ActionRole)
-            overwriteButton = msgBox.addButton("覆蓋", QMessageBox.ActionRole)
+            overwriteButton = msgBox.addButton("覆蓋現有專案", QMessageBox.ActionRole)
             cancelButton = msgBox.addButton("取消", QMessageBox.RejectRole)
             
             msgBox.exec_()
@@ -472,19 +472,56 @@ class ProcessView(QWidget):
             if clicked_button == cancelButton:
                 return
             elif clicked_button == newButton:
-                # 找出現有的存檔檔案
-                existing_files = [f for f in os.listdir(base_path) 
-                                if f.startswith('connections_save') and f.endswith('.json')]
-                # 取得最新的編號
-                max_num = 0
-                for f in existing_files:
-                    try:
-                        num = int(f.replace('connections_save', '').replace('.json', ''))
-                        max_num = max(max_num, num)
-                    except ValueError:
-                        continue
-                # 建立新的檔名
-                json_path = os.path.join(base_path, f'connections_save{max_num + 1}.json')
+                # 讓使用者輸入新檔名
+                file_name, ok = QInputDialog.getText(
+                    self,
+                    "新增專案",
+                    "請輸入專案名稱（不需要加副檔名）：",
+                    QLineEdit.Normal,
+                    ""
+                )
+                
+                if ok and file_name:
+                    # 使用使用者輸入的檔名
+                    json_path = os.path.join(base_path, f'{file_name}.json')
+                elif ok:  # 使用者沒有輸入檔名但按了確定
+                    # 找出現有的存檔檔案
+                    existing_files = [f for f in os.listdir(base_path) 
+                                    if f.startswith('connections_save') and f.endswith('.json')]
+                    # 取得最新的編號
+                    max_num = 0
+                    for f in existing_files:
+                        try:
+                            num = int(f.replace('connections_save', '').replace('.json', ''))
+                            max_num = max(max_num, num)
+                        except ValueError:
+                            continue
+                    # 使用預設檔名
+                    json_path = os.path.join(base_path, f'connections_save{max_num + 1}.json')
+                else:  # 使用者取消
+                    return
+                
+            elif clicked_button == overwriteButton:
+                # 找出所有存檔檔案
+                save_files = [f for f in os.listdir(base_path) 
+                             if f.endswith('.json')]
+                
+                if not save_files:
+                    self.label.setText("沒有找到任何可覆蓋的存檔")
+                    return
+                
+                # 讓使用者選擇要覆蓋哪個檔案
+                item, ok = QInputDialog.getItem(
+                    self,
+                    "選擇要覆蓋的檔案",
+                    "請選擇要覆蓋的存檔：",
+                    save_files,
+                    0,
+                    False
+                )
+                if not ok:
+                    return
+                json_path = os.path.join(base_path, item)
         
         # 準備存檔資料
         connections_data = {}
@@ -557,7 +594,6 @@ class ProcessView(QWidget):
             node_map = {}
             detect_folder = get_resource_path('detect')
             
-            # 第一步：建立所有節點
             for file_name, data in connections_data.items():
                 file_path = os.path.join(detect_folder, file_name)
                 if os.path.exists(file_path):
@@ -581,32 +617,21 @@ class ProcessView(QWidget):
                         if not items:
                             self.list_widget.addItem(file_name)
             
-            # 第二步：建立連線（只處理 from->to 的方向）
-            processed_connections = set()  # 用來追蹤已處理的連線
+            # 重建連線
             for file_name, data in connections_data.items():
                 if file_name in node_map:
                     source_node = node_map[file_name]
                     for conn in data.get('connections', []):
-                        from_file = conn['from']
-                        to_file = conn['to']
-                        
-                        # 確保只處理一次連線
-                        connection_key = tuple(sorted([from_file, to_file]))
-                        if connection_key in processed_connections:
-                            continue
-                        
-                        if from_file in node_map and to_file in node_map:
-                            from_node = node_map[from_file]
-                            to_node = node_map[to_file]
-                            
-                            # 建立連線，箭頭從 from 指向 to
+                        target_file = conn['to']
+                        if target_file in node_map:
+                            target_node = node_map[target_file]
+                            # 使用預設的偏移量建立連線
                             self.connectTwoItems(
-                                from_node,
-                                QPointF(from_node.boundingRect().center()),
-                                to_node,
-                                QPointF(to_node.boundingRect().center())
+                                source_node, 
+                                QPointF(source_node.boundingRect().center()),
+                                target_node, 
+                                QPointF(target_node.boundingRect().center())
                             )
-                            processed_connections.add(connection_key)
             
             self.label.setText(f"已載入連線關係和位置: {os.path.basename(json_path)}")
         except Exception as e:
@@ -614,8 +639,24 @@ class ProcessView(QWidget):
 
     def reload_connections(self):
         """重新載入連線關係"""
-        # 先清空現有連線
-        self.clear_connections()
+        # 只清空場景中的連線，不清空檔案
+        # 收集所有需要移除的連線
+        lines_and_arrows = set()
+        
+        # 遍歷所有節點
+        for item in self.graphics_scene.items():
+            if isinstance(item, PixmapNode):
+                # 收集該節點的所有線條和箭頭
+                for _, line, arrow, _, _ in item.connections:
+                    lines_and_arrows.add(line)
+                    lines_and_arrows.add(arrow)
+                # 清空該節點的連線列表
+                item.connections.clear()
+        
+        # 從場景中移除所有線條和箭頭
+        for item in lines_and_arrows:
+            self.graphics_scene.removeItem(item)
+        
         # 重新載入連線
         self.load_connections()
 

@@ -393,12 +393,12 @@ def ADB_Click_step_by_step(step_array, log_view):
 
 def initialize_connections_file():
     """初始化 connections.json 檔案"""
-    json_path = get_resource_path('SaveData/connections.json')
-    directory = os.path.dirname(json_path)
+    # 確保 SaveData 目錄存在
+    save_data_path = get_resource_path('SaveData')
+    if not os.path.exists(save_data_path):
+        os.makedirs(save_data_path)
     
-    # 確保目錄存在
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+    json_path = os.path.join(save_data_path, 'connections.json')
     
     # 如果檔案不存在或為空，建立預設結構
     if not os.path.exists(json_path) or os.stat(json_path).st_size == 0:
@@ -417,3 +417,10 @@ def initialize_connections_file():
             # 如果 JSON 無效，重新建立檔案
             with open(json_path, 'w', encoding='utf-8') as f:
                 json.dump({}, f, ensure_ascii=False, indent=4)
+
+def ensure_save_data_directory():
+    """確保 SaveData 目錄存在"""
+    save_data_path = get_resource_path('SaveData')
+    if not os.path.exists(save_data_path):
+        os.makedirs(save_data_path)
+        print(f"建立 SaveData 目錄: {save_data_path}")
