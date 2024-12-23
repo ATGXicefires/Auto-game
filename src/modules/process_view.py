@@ -2,15 +2,18 @@ import math
 import shutil
 import os
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QGraphicsView, QGraphicsScene,
-    QMenu, QGraphicsLineItem, QGraphicsPixmapItem, QGraphicsPolygonItem
+    QWidget, QHBoxLayout, QVBoxLayout, QLabel, QGraphicsView, QGraphicsScene,
+    QMenu, QGraphicsLineItem, QGraphicsPixmapItem, QGraphicsPolygonItem,
+    QListWidget
 )
 from PySide6.QtGui import (
     QPixmap, QDragEnterEvent, QDropEvent, QFont, QWheelEvent,
     QPen, QPainter, QMouseEvent, QContextMenuEvent, QKeyEvent,
-    QPolygonF
+    QPolygonF, QDrag
 )
-from PySide6.QtCore import Qt, QPointF, QEvent
+from PySide6.QtCore import (
+    Qt, QPointF, QEvent, QMimeData, QUrl
+)
 from functions import get_resource_path
 
 class ArrowItem(QGraphicsPolygonItem):
@@ -29,6 +32,29 @@ class ArrowItem(QGraphicsPolygonItem):
         self.setBrush(Qt.white)
         self.setPen(QPen(Qt.white))
 
+class DraggableListWidget(QListWidget):
+    """自訂可拖放的列表元件"""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setDragEnabled(True)
+        self.setAcceptDrops(True)
+        
+    def startDrag(self, supportedActions):
+        """當使用者從列表拖動項目時觸發"""
+        item = self.currentItem()
+        if not item:
+            return
+            
+        mime_data = QMimeData()
+        # 使用完整路徑建立 URL
+        file_path = os.path.join(get_resource_path('detect'), item.text())
+        url = QUrl.fromLocalFile(file_path)
+        mime_data.setUrls([url])
+        
+        drag = QDrag(self)
+        drag.setMimeData(mime_data)
+        drag.exec_(Qt.CopyAction)
+
 class PixmapNode(QGraphicsPixmapItem):
     """
     自訂類別，承載 connections (所有連線)。
@@ -36,10 +62,11 @@ class PixmapNode(QGraphicsPixmapItem):
     connections: List[ (otherNode, lineObj, arrowObj, myOffset, otherOffset) ]
        → (對方的 PixmapNode, 連線物件, 箭頭物件, 我方 local_offset, 對方 local_offset)
     """
-    def __init__(self, pixmap):
+    def __init__(self, pixmap, file_path):
         super().__init__(pixmap)
         self.setFlag(QGraphicsPixmapItem.ItemSendsScenePositionChanges, True)
         self.connections = []
+        self.file_path = file_path  # 儲存圖片路徑，方便之後需要
 
     def itemChange(self, change, value):
         if change == QGraphicsPixmapItem.ItemPositionChange:
@@ -60,7 +87,7 @@ class PixmapNode(QGraphicsPixmapItem):
             their_point_in_scene.x(), their_point_in_scene.y()
         )
 
-        # 箭頭擺在中點
+        # 更新箭頭位置和角度
         mid_x = (my_point_in_scene.x() + their_point_in_scene.x()) / 2
         mid_y = (my_point_in_scene.y() + their_point_in_scene.y()) / 2
         arrowObj.setPos(mid_x, mid_y)
@@ -76,24 +103,41 @@ class ProcessView(QWidget):
         super(ProcessView, self).__init__(parent)
         self.setAcceptDrops(True)  # 啟用拖放功能
 
-        main_layout = QVBoxLayout(self)
+        # 整體使用水平佈局，左側為圖片列表，右側為原本場景與標籤
+        main_layout = QHBoxLayout(self)
         self.setLayout(main_layout)
 
-        # 場景與視圖
+        # 左側面板 - 使用自訂的可拖放列表
+        self.left_panel = QVBoxLayout()
+        self.list_label = QLabel("已匯入圖片", self)
+        self.list_label.setFont(QFont("Arial", 12, QFont.Bold))
+        self.list_label.setAlignment(Qt.AlignCenter)
+
+        self.list_widget = DraggableListWidget(self)  # 使用自訂列表
+        self.left_panel.addWidget(self.list_label)
+        self.left_panel.addWidget(self.list_widget)
+
+        # 左側佈局加入到整體
+        left_container = QWidget()
+        left_container.setLayout(self.left_panel)
+        main_layout.addWidget(left_container, 0)  # 權重較小
+
+        # 右側主要顯示區域
+        right_container = QWidget()
+        right_layout = QVBoxLayout(right_container)
+
         self.graphics_view = CustomGraphicsView()
         self.graphics_scene = QGraphicsScene(self)
         self.graphics_view.setScene(self.graphics_scene)
         self.graphics_view.setRenderHint(QPainter.Antialiasing)
         self.graphics_view.setRenderHint(QPainter.SmoothPixmapTransform)
         self.graphics_view.setDragMode(QGraphicsView.ScrollHandDrag)
-        main_layout.addWidget(self.graphics_view)
 
-        # 提示標籤
+        # 標籤
         self.label = QLabel("拖曳圖片到此區域", self)
         self.label.setAlignment(Qt.AlignCenter)
         self.label.setFont(QFont("Arial", 16, QFont.Bold))
         self.label.setStyleSheet("color: white; background-color: darkblue; padding: 10px;")
-        main_layout.addWidget(self.label)
 
         # 連線模式
         self.is_connection_mode = False
@@ -105,16 +149,72 @@ class ProcessView(QWidget):
         # 監聽事件
         self.graphics_view.viewport().installEventFilter(self)
 
+        # 右側佈局 - 先排放 View，再排放標籤
+        right_layout.addWidget(self.graphics_view, 1)
+        right_layout.addWidget(self.label)
+        main_layout.addWidget(right_container, 1)  # 權重較大
+
     def contextMenuEvent(self, event: QContextMenuEvent):
+        # 獲取點擊位置的場景座標
+        scene_pos = self.graphics_view.mapToScene(self.graphics_view.mapFromParent(event.pos()))
+        item = self.graphics_scene.itemAt(scene_pos, self.graphics_view.transform())
+        
         menu = QMenu(self)
+        
+        # 如果點擊到的是圖片節點或有圖片被選中，添加刪除選項
+        selected_items = [item for item in self.graphics_scene.selectedItems() 
+                         if isinstance(item, PixmapNode)]
+        
+        if isinstance(item, PixmapNode) or selected_items:
+            delete_action = menu.addAction("刪除圖片")
+            # 如果直接點擊到圖片，刪除該圖片；否則刪除所有選中的圖片
+            if isinstance(item, PixmapNode):
+                delete_action.triggered.connect(lambda: self.delete_image(item))
+            else:
+                delete_action.triggered.connect(lambda: self.delete_selected_images(selected_items))
+            menu.addSeparator()  # 添加分隔線
+        
+        # 原有的連線模式切換選項
         if self.is_connection_mode:
             toggle_action = menu.addAction("停止連線模式")
         else:
             toggle_action = menu.addAction("啟用連線模式")
+        
         action = menu.exec_(self.mapToGlobal(event.pos()))
         if action == toggle_action:
             self.toggleConnectionMode()
+        
         event.accept()
+
+    def delete_image(self, item: PixmapNode):
+        """刪除圖片及其相關連線"""
+        # 1. 刪除所有相關的連線
+        connections_to_remove = item.connections.copy()  # 創建副本以避免在迭代時修改
+        for other_node, line, arrow, _, _ in connections_to_remove:
+            # 從場景中移除線條和箭頭
+            self.graphics_scene.removeItem(line)
+            self.graphics_scene.removeItem(arrow)
+            
+            # 從另一個節點的 connections 中移除這個連線
+            other_connections = []
+            for conn in other_node.connections:
+                if conn[0] != item:  # 如果不是要刪除的項目，則保留
+                    other_connections.append(conn)
+            other_node.connections = other_connections
+        
+        # 清空當前節點的連線列表
+        item.connections.clear()
+        
+        # 2. 從列表中移除檔案名稱
+        file_name = os.path.basename(item.file_path)
+        items = self.list_widget.findItems(file_name, Qt.MatchExactly)
+        for list_item in items:
+            self.list_widget.takeItem(self.list_widget.row(list_item))
+        
+        # 3. 從場景中移除圖片節點
+        self.graphics_scene.removeItem(item)
+        
+        self.label.setText(f"已刪除圖片: {file_name}")
 
     def toggleConnectionMode(self):
         self.is_connection_mode = not self.is_connection_mode
@@ -148,7 +248,6 @@ class ProcessView(QWidget):
                         pen = QPen(Qt.white)
                         pen.setStyle(Qt.DashLine)
                         pen.setWidth(4)
-                        # 確保非 cosmetic，會跟隨縮放 (預設已有可能是False，但這裡明確指定)
                         pen.setCosmetic(False)
                         self.temp_line.setPen(pen)
                         self.graphics_scene.addItem(self.temp_line)
@@ -225,9 +324,9 @@ class ProcessView(QWidget):
         angle_deg = math.degrees(math.atan2(dy, dx))
         arrow.setRotation(angle_deg)
 
-        # 雙向記錄連線 (多半只需要 A->B 的箭頭，但可依需求同時做 B->A)
+        # 雙向記錄連線：A->B 和 B->A 都要記錄
         itemA.connections.append((itemB, line, arrow, offsetA, offsetB))
-        # itemB.connections.append(...) # 若需要反向箭頭，可在此補上
+        itemB.connections.append((itemA, line, arrow, offsetB, offsetA))  # 注意：B 的 offset 順序要對調
 
     def dragEnterEvent(self, event: QDragEnterEvent):
         if event.mimeData().hasUrls():
@@ -242,31 +341,44 @@ class ProcessView(QWidget):
                 self.handle_image_drop(file_path)
 
     def handle_image_drop(self, file_path):
+        """改進的圖片處理函式"""
         detect_folder = get_resource_path('detect')
         if not os.path.exists(detect_folder):
             os.makedirs(detect_folder)
 
         file_name = os.path.basename(file_path)
         destination_path = os.path.join(detect_folder, file_name)
-        shutil.copy(file_path, destination_path)
+        
+        # 如果是新檔案才複製
+        if not os.path.exists(destination_path):
+            shutil.copy(file_path, destination_path)
 
         pixmap = QPixmap(destination_path)
         if pixmap.isNull():
             return
 
-        pixmap_node = PixmapNode(pixmap)
+        # 建立 PixmapNode 時傳入檔案路徑
+        pixmap_node = PixmapNode(pixmap, destination_path)
         pixmap_node.setFlag(QGraphicsPixmapItem.ItemIsMovable, not self.is_connection_mode)
         pixmap_node.setFlag(QGraphicsPixmapItem.ItemIsSelectable, True)
         self.graphics_scene.addItem(pixmap_node)
 
+        # 檢查列表中是否已有此檔名，沒有才添加
+        items = self.list_widget.findItems(file_name, Qt.MatchExactly)
+        if not items:
+            self.list_widget.addItem(file_name)
+
         self.label.setText(f"已載入圖片: {file_name}")
 
     def wheelEvent(self, event: QWheelEvent):
-        """
-        使用滾輪放大縮小。由於線條與箭頭不是 cosmetic，所以會跟隨場景同步縮放。
-        """
+        """使用滾輪放大縮小，因 pen.setCosmetic(False)，線條與箭頭會跟隨縮放。"""
         factor = 1.2 if event.angleDelta().y() > 0 else 1 / 1.2
         self.graphics_view.scale(factor, factor)
+
+    def delete_selected_images(self, items):
+        """刪除多個選中的圖片"""
+        for item in items:
+            self.delete_image(item)
 
 class CustomGraphicsView(QGraphicsView):
     def __init__(self, parent=None):
