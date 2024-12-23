@@ -131,8 +131,9 @@ def handle_file_selection(main_window):
         # 複製文件到目標資料夾並更新 JSON
         for i, file_path in enumerate(file_paths, start=1):
             target_path = os.path.join(target_dir, os.path.basename(file_path))
-            shutil.copy(file_path, target_path)
-            print(f"Image copied to {target_path}")
+            if not os.path.exists(target_path):  # 如果檔案不存在才複製
+                shutil.copy(file_path, target_path)
+                print(f"Image copied to {target_path}")
 
             # 將目標路徑轉換為相對路徑
             relative_path = os.path.relpath(target_path, start=os.getcwd())
@@ -140,8 +141,13 @@ def handle_file_selection(main_window):
             # 儲存路徑到 JSON 檔案
             data[f"Img[{max_index + i}]"] = relative_path
 
-            # 在列表中添加新圖片的檔名
-            main_window.image_list_widget.addItem(os.path.basename(relative_path))
+            # 在列表中添加新圖片的檔名（如果不存在）
+            file_name = os.path.basename(relative_path)
+            items = main_window.image_list_widget.findItems(file_name, Qt.MatchExactly)
+            if not items:
+                main_window.image_list_widget.addItem(file_name)
+                # 同步更新 ProcessView 的列表
+                main_window.process_view.sync_from_main_view(file_name, target_path)
 
         with open(json_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)

@@ -367,6 +367,11 @@ class ProcessView(QWidget):
         items = self.list_widget.findItems(file_name, Qt.MatchExactly)
         if not items:
             self.list_widget.addItem(file_name)
+            # 同步到主視圖的列表
+            if hasattr(self.parent(), 'image_list_widget'):
+                items = self.parent().image_list_widget.findItems(file_name, Qt.MatchExactly)
+                if not items:
+                    self.parent().image_list_widget.addItem(file_name)
 
         self.label.setText(f"已載入圖片: {file_name}")
 
@@ -379,6 +384,22 @@ class ProcessView(QWidget):
         """刪除多個選中的圖片"""
         for item in items:
             self.delete_image(item)
+
+    def sync_from_main_view(self, file_name, file_path):
+        """從主視圖同步圖片到流程視圖"""
+        # 檢查列表中是否已有此檔名
+        items = self.list_widget.findItems(file_name, Qt.MatchExactly)
+        if not items:
+            # 添加到列表
+            self.list_widget.addItem(file_name)
+            
+            # 載入圖片到場景
+            pixmap = QPixmap(file_path)
+            if not pixmap.isNull():
+                pixmap_node = PixmapNode(pixmap, file_path)
+                pixmap_node.setFlag(QGraphicsPixmapItem.ItemIsMovable, not self.is_connection_mode)
+                pixmap_node.setFlag(QGraphicsPixmapItem.ItemIsSelectable, True)
+                self.graphics_scene.addItem(pixmap_node)
 
 class CustomGraphicsView(QGraphicsView):
     def __init__(self, parent=None):
