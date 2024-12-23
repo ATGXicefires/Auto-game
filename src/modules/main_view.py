@@ -5,8 +5,7 @@ from ui_logic import (
     handle_file_selection, 
     clear_json_file, 
     clear_steps, 
-    on_preview_button_click, 
-    display_sorted_images, 
+    process_set_button_click, 
     on_zoom_slider_change, 
     show_context_menu, 
     delete_selected_image, 
@@ -92,6 +91,10 @@ class MainWindow(QMainWindow):
         # 設置主視圖的佈局
         self.setup_main_view()
 
+        self.current_image_key = None  # 用於存儲當前顯示圖片的鍵
+
+        self.load_mode_setting()
+
     def setup_main_view(self):
         # 主窗口的中心小部件
         main_layout = QHBoxLayout(self.main_widget)
@@ -134,12 +137,12 @@ class MainWindow(QMainWindow):
         clear_steps_button.clicked.connect(lambda: clear_steps(self))
         left_layout.addWidget(clear_steps_button)
 
-        # 添加 "流程預覽" 按鈕
-        preview_button = QPushButton("流程預覽", self)
+        # 添加 "流程編輯" 按鈕
+        preview_button = QPushButton("流程編輯", self)
         preview_button.setFixedWidth(fixed_width)  # 設置按鈕寬度
         preview_button.setFixedHeight(50)  # 設置按鈕高度
         preview_button.setFont(QFont("Arial", 14))  # 設置字體大小
-        preview_button.clicked.connect(self.on_preview_button_click)
+        preview_button.clicked.connect(self.process_set_button_click)
         left_layout.addWidget(preview_button)
 
         # 添加模式選擇開關
@@ -217,11 +220,6 @@ class MainWindow(QMainWindow):
         # 將右側佈局添加到主佈局
         main_layout.addLayout(right_layout)
 
-        self.current_image_key = None  # 用於存儲當前顯示圖片的鍵
-
-        self.display_sorted_images()  # 在初始化時顯示排序後的圖片
-        self.load_mode_setting()
-
     def on_button_click(self):
         handle_file_selection(self)
 
@@ -231,11 +229,8 @@ class MainWindow(QMainWindow):
     def clear_steps(self):
         clear_steps(self)
 
-    def on_preview_button_click(self):
-        on_preview_button_click(self)
-
-    def display_sorted_images(self):
-        display_sorted_images(self)
+    def process_set_button_click(self):
+        process_set_button_click(self)
 
     def on_zoom_slider_change(self):
         on_zoom_slider_change(self)

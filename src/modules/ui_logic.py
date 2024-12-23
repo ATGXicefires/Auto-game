@@ -223,51 +223,12 @@ def clear_steps(main_window):
             json.dump(data, f, ensure_ascii=False, indent=4)
         main_window.log_view.append_log("所有 Step[Y] 條目已清除")
 
-def on_preview_button_click(main_window):
-    # 處理 "流程預覽" 按鈕的點擊事件
-    print("流程預覽按鈕被點擊")
-    display_sorted_images(main_window)  # 顯示排序後的圖片
-
-def display_sorted_images(main_window):
-    # 讀取 JSON 檔案並按 Step[Y] 排序顯示圖片
-    json_path = get_resource_path("SaveData/sv.json")
-    with open(json_path, 'r', encoding='utf-8') as f:
-        data = json.load(f)
-
-    # 過濾出 Step[Y] 鍵並排序
-    step_items = {k: v for k, v in data.items() if k.startswith("Step[")}
-    sorted_steps = sorted(step_items.items(), key=lambda item: int(item[0][5:-1]))
-
-    # 清除現有的場景
-    main_window.graphics_scene.clear()
-
-    # 設置初始位置
-    y_offset = 0
-    previous_item = None
-
-    # 依序顯示圖片
-    for _, path in sorted_steps:
-        pixmap = QPixmap(path)
-        
-        # 自動縮放圖片以適應顯示區域
-        scaled_pixmap = pixmap.scaled(main_window.graphics_view.width(), main_window.graphics_view.height(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
-        
-        item = main_window.graphics_scene.addPixmap(scaled_pixmap)
-        item.setPos(0, y_offset)  # 設置每張圖片的位置
-        item.setFlag(QGraphicsPixmapItem.ItemIsMovable)  # 設置圖片為可移動
-        
-        # 如果有前一個圖片，則添加箭頭
-        if previous_item:
-            pen = QPen(Qt.black)  # 使用 QPen 來設置箭頭顏色
-            arrow = main_window.graphics_scene.addLine(previous_item.x() + previous_item.pixmap().width() / 2,
-                                                previous_item.y() + previous_item.pixmap().height(),
-                                                item.x() + item.pixmap().width() / 2,
-                                                item.y(),
-                                                pen)
-            arrow.setZValue(-1)  # 確保箭頭在圖片下方
-        
-        previous_item = item
-        y_offset += scaled_pixmap.height() + 10  # 更新 y_offset 以便下一張圖片不重疊
+def process_set_button_click(main_window):
+    """切換到流程視圖頁籤"""
+    # 找到 process_view 的索引並切換到該頁籤
+    process_view_index = main_window.tabs.indexOf(main_window.process_view)
+    if process_view_index != -1:  # 確保找到了 process_view
+        main_window.tabs.setCurrentIndex(process_view_index)
 
 def on_zoom_slider_change(main_window):
     # 當滑桿值改變時更新圖片顯示
