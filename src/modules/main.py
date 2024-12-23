@@ -3,7 +3,7 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QThread, Signal
 from PySide6.QtGui import QPalette, QColor, Qt
 from main_view import MainWindow
-from functions import ensure_cache_directory, ensure_sv_json, ensure_detect_directory, clear_sv_json, Click_step_by_step, ADB_Click_step_by_step, initialize_setting_file
+from functions import ensure_cache_directory, ensure_sv_json, ensure_detect_directory, clear_sv_json, Click_step_by_step, ADB_Click_step_by_step, initialize_setting_file, initialize_connections_file
 
 class Worker(QThread):
     finished = Signal()
@@ -27,12 +27,11 @@ if __name__ == "__main__":
     ensure_cache_directory()
     ensure_detect_directory()
     initialize_setting_file()
+    initialize_connections_file()
     ensure_sv_json()
     clear_sv_json()
     # 創建 QApplication 實例
     app = QApplication(sys.argv)
-
-    # 設定深色主題的 Palette（可自由調整色票）app = QApplication(sys.argv)
     # 1. 設定 Fusion 風格
     app.setStyle("Fusion")
 
@@ -78,6 +77,20 @@ if __name__ == "__main__":
         }
         QMessageBox {
             background-color: #353535;
+        }
+        QMenu {
+            background-color: #353535;
+            border: 1px solid #3d3d3d;
+        }
+        QMenu::item {
+            padding: 5px 20px;
+        }
+        QMenu::item:selected {
+            background-color: #2a82da;
+        }
+        /* 為特定的選單項目設定顏色 */
+        QMenu::item[class="danger"] {
+            color: #ff4444;
         }
     """)
 

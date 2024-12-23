@@ -390,3 +390,30 @@ def ADB_Click_step_by_step(step_array, log_view):
             log_view.append_log(f"已點擊: {image_path}")
         else:
             log_view.append_log(f"未找到: {image_path}")
+
+def initialize_connections_file():
+    """初始化 connections.json 檔案"""
+    json_path = get_resource_path('SaveData/connections.json')
+    directory = os.path.dirname(json_path)
+    
+    # 確保目錄存在
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    
+    # 如果檔案不存在或為空，建立預設結構
+    if not os.path.exists(json_path) or os.stat(json_path).st_size == 0:
+        default_connections = {}  # 空字典作為預設值
+        
+        with open(json_path, 'w', encoding='utf-8') as f:
+            json.dump(default_connections, f, ensure_ascii=False, indent=4)
+        print(f"初始化了 connections.json 檔案: {json_path}")
+    else:
+        # 如果檔案存在，確保它是有效的 JSON 格式
+        try:
+            with open(json_path, 'r', encoding='utf-8') as f:
+                json.load(f)  # 嘗試讀取 JSON
+        except Exception as e:
+            print(f"connections.json 格式無效，重新建立: {str(e)}")
+            # 如果 JSON 無效，重新建立檔案
+            with open(json_path, 'w', encoding='utf-8') as f:
+                json.dump({}, f, ensure_ascii=False, indent=4)

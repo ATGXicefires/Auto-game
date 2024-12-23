@@ -1,15 +1,16 @@
 import math
 import shutil
 import os
+import json
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QLabel, QGraphicsView, QGraphicsScene,
     QMenu, QGraphicsLineItem, QGraphicsPixmapItem, QGraphicsPolygonItem,
-    QListWidget
+    QListWidget, QPushButton, QMessageBox, QInputDialog
 )
 from PySide6.QtGui import (
     QPixmap, QDragEnterEvent, QDropEvent, QFont, QWheelEvent,
     QPen, QPainter, QMouseEvent, QContextMenuEvent, QKeyEvent,
-    QPolygonF, QDrag
+    QPolygonF, QDrag, QColor, QIcon
 )
 from PySide6.QtCore import (
     Qt, QPointF, QEvent, QMimeData, QUrl
@@ -154,6 +155,28 @@ class ProcessView(QWidget):
         right_layout.addWidget(self.label)
         main_layout.addWidget(right_container, 1)  # 權重較大
 
+        # 建立按鈕容器
+        self.button_container = QWidget()
+        button_layout = QHBoxLayout(self.button_container)
+        
+        # 添加保存按鈕
+        self.save_button = QPushButton("保存連線關係", self)
+        self.save_button.clicked.connect(self.save_connections)
+        button_layout.addWidget(self.save_button)
+        
+        # 添加載入按鈕
+        self.load_button = QPushButton("載入連線關係", self)
+        self.load_button.clicked.connect(self.reload_connections)
+        button_layout.addWidget(self.load_button)
+        
+        # 添加清空按鈕
+        self.clear_button = QPushButton("清空連線關係", self)
+        self.clear_button.clicked.connect(self.clear_connections)
+        button_layout.addWidget(self.clear_button)
+        
+        # 將按鈕容器加入左側面板
+        self.left_panel.addWidget(self.button_container)
+
     def contextMenuEvent(self, event: QContextMenuEvent):
         # 獲取點擊位置的場景座標
         scene_pos = self.graphics_view.mapToScene(self.graphics_view.mapFromParent(event.pos()))
@@ -180,11 +203,37 @@ class ProcessView(QWidget):
         else:
             toggle_action = menu.addAction("啟用連線模式")
         
+        menu.addSeparator()  # 添加分隔線
+        
+        # 添加清空畫布選項（移到最後）
+        clear_action = menu.addAction("清空畫布")
+        clear_action.setProperty("class", "danger")  # 設定特殊的 class 屬性
+        clear_action.triggered.connect(self.clear_canvas)
+        
         action = menu.exec_(self.mapToGlobal(event.pos()))
         if action == toggle_action:
             self.toggleConnectionMode()
         
         event.accept()
+
+    def clear_canvas(self):
+        """清空整個畫布，包括所有圖片和連線"""
+        # 顯示警告對話框
+        msgBox = QMessageBox()
+        msgBox.setWindowTitle("警告")
+        msgBox.setText("確定要清空整個畫布嗎？")
+        msgBox.setInformativeText("這將刪除所有圖片和連線關係，此操作無法復原。")
+        msgBox.setIcon(QMessageBox.Warning)
+        msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        msgBox.setDefaultButton(QMessageBox.No)
+        
+        # 如果使用者確認要清空
+        if msgBox.exec_() == QMessageBox.Yes:
+            # 清空場景
+            self.graphics_scene.clear()
+            # 清空列表
+            self.list_widget.clear()
+            self.label.setText("已清空畫布")
 
     def delete_image(self, item: PixmapNode):
         """刪除圖片及其相關連線"""
@@ -400,6 +449,189 @@ class ProcessView(QWidget):
                 pixmap_node.setFlag(QGraphicsPixmapItem.ItemIsMovable, not self.is_connection_mode)
                 pixmap_node.setFlag(QGraphicsPixmapItem.ItemIsSelectable, True)
                 self.graphics_scene.addItem(pixmap_node)
+
+    def save_connections(self):
+        """保存所有圖片的連線關係和位置到 JSON 檔案"""
+        base_path = get_resource_path('SaveData')
+        json_path = os.path.join(base_path, 'connections.json')
+        
+        # 檢查是否已有存檔
+        if os.path.exists(json_path) and os.path.getsize(json_path) > 2:  # 檢查檔案是否大於空的 JSON {}
+            # 詢問使用者要新建還是覆蓋
+            msgBox = QMessageBox()
+            msgBox.setWindowTitle("保存專案")
+            msgBox.setText("已存在專案存檔")
+            msgBox.setInformativeText("要建立新專案還是覆蓋現有專案？")
+            newButton = msgBox.addButton("建立新專案", QMessageBox.ActionRole)
+            overwriteButton = msgBox.addButton("覆蓋", QMessageBox.ActionRole)
+            cancelButton = msgBox.addButton("取消", QMessageBox.RejectRole)
+            
+            msgBox.exec_()
+            clicked_button = msgBox.clickedButton()
+            
+            if clicked_button == cancelButton:
+                return
+            elif clicked_button == newButton:
+                # 找出現有的存檔檔案
+                existing_files = [f for f in os.listdir(base_path) 
+                                if f.startswith('connections_save') and f.endswith('.json')]
+                # 取得最新的編號
+                max_num = 0
+                for f in existing_files:
+                    try:
+                        num = int(f.replace('connections_save', '').replace('.json', ''))
+                        max_num = max(max_num, num)
+                    except ValueError:
+                        continue
+                # 建立新的檔名
+                json_path = os.path.join(base_path, f'connections_save{max_num + 1}.json')
+        
+        # 準備存檔資料
+        connections_data = {}
+        for item in self.graphics_scene.items():
+            if isinstance(item, PixmapNode):
+                # 獲取當前節點的檔名和位置
+                source_file = os.path.basename(item.file_path)
+                pos = item.pos()
+                node_data = {
+                    'position': {'x': pos.x(), 'y': pos.y()},
+                    'connections': []
+                }
+                
+                # 遍歷該節點的所有連線
+                for target_node, _, _, _, _ in item.connections:
+                    target_file = os.path.basename(target_node.file_path)
+                    # 只記錄單向連線（避免重複）
+                    if (target_file, source_file) not in [(c['from'], c['to']) 
+                        for data in connections_data.values() 
+                        for c in data.get('connections', [])]:
+                        node_data['connections'].append({
+                            'from': source_file,
+                            'to': target_file
+                        })
+                
+                connections_data[source_file] = node_data
+
+        # 保存到 JSON 檔案
+        with open(json_path, 'w', encoding='utf-8') as f:
+            json.dump(connections_data, f, ensure_ascii=False, indent=4)
+        
+        self.label.setText(f"已保存連線關係和位置到: {os.path.basename(json_path)}")
+
+    def load_connections(self):
+        """從 JSON 檔案載入連線關係和圖片位置"""
+        base_path = get_resource_path('SaveData')
+        
+        # 找出所有存檔檔案
+        save_files = [f for f in os.listdir(base_path) 
+                      if f.startswith('connections') and f.endswith('.json')]
+        
+        if not save_files:
+            self.label.setText("沒有找到任何存檔")
+            return
+        
+        # 如果有多個存檔，讓使用者選擇
+        if len(save_files) > 1:
+            item, ok = QInputDialog.getItem(
+                self,
+                "選擇存檔",
+                "請選擇要載入的存檔：",
+                save_files,
+                0,
+                False
+            )
+            if not ok:
+                return
+            json_path = os.path.join(base_path, item)
+        else:
+            json_path = os.path.join(base_path, save_files[0])
+        
+        try:
+            with open(json_path, 'r', encoding='utf-8') as f:
+                connections_data = json.load(f)
+            
+            # 先清空場景
+            self.graphics_scene.clear()
+            
+            # 建立所有節點
+            node_map = {}
+            detect_folder = get_resource_path('detect')
+            
+            for file_name, data in connections_data.items():
+                file_path = os.path.join(detect_folder, file_name)
+                if os.path.exists(file_path):
+                    # 創建新的 PixmapNode
+                    pixmap = QPixmap(file_path)
+                    if not pixmap.isNull():
+                        node = PixmapNode(pixmap, file_path)
+                        node.setFlag(QGraphicsPixmapItem.ItemIsMovable, not self.is_connection_mode)
+                        node.setFlag(QGraphicsPixmapItem.ItemIsSelectable, True)
+                        self.graphics_scene.addItem(node)
+                        
+                        # 設置位置
+                        if 'position' in data:
+                            pos = data['position']
+                            node.setPos(pos['x'], pos['y'])
+                        
+                        node_map[file_name] = node
+                        
+                        # 確保列表中有此圖片
+                        items = self.list_widget.findItems(file_name, Qt.MatchExactly)
+                        if not items:
+                            self.list_widget.addItem(file_name)
+            
+            # 重建連線
+            for file_name, data in connections_data.items():
+                if file_name in node_map:
+                    source_node = node_map[file_name]
+                    for conn in data.get('connections', []):
+                        target_file = conn['to']
+                        if target_file in node_map:
+                            target_node = node_map[target_file]
+                            # 使用預設的偏移量建立連線
+                            self.connectTwoItems(
+                                source_node, 
+                                QPointF(source_node.boundingRect().center()),
+                                target_node, 
+                                QPointF(target_node.boundingRect().center())
+                            )
+            
+            self.label.setText(f"已載入連線關係和位置: {os.path.basename(json_path)}")
+        except Exception as e:
+            self.label.setText(f"載入連線關係時發生錯誤: {str(e)}")
+
+    def reload_connections(self):
+        """重新載入連線關係"""
+        # 先清空現有連線
+        self.clear_connections()
+        # 重新載入連線
+        self.load_connections()
+
+    def clear_connections(self):
+        """清空所有連線關係"""
+        # 收集所有需要移除的連線
+        lines_and_arrows = set()
+        
+        # 遍歷所有節點
+        for item in self.graphics_scene.items():
+            if isinstance(item, PixmapNode):
+                # 收集該節點的所有線條和箭頭
+                for _, line, arrow, _, _ in item.connections:
+                    lines_and_arrows.add(line)
+                    lines_and_arrows.add(arrow)
+                # 清空該節點的連線列表
+                item.connections.clear()
+        
+        # 從場景中移除所有線條和箭頭
+        for item in lines_and_arrows:
+            self.graphics_scene.removeItem(item)
+        
+        # 清空 connections.json 檔案
+        json_path = get_resource_path('SaveData/connections.json')
+        with open(json_path, 'w', encoding='utf-8') as f:
+            json.dump({}, f, ensure_ascii=False, indent=4)
+        
+        self.label.setText("已清空所有連線關係")
 
 class CustomGraphicsView(QGraphicsView):
     def __init__(self, parent=None):
