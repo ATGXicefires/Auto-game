@@ -35,7 +35,7 @@ class Node(QGraphicsEllipseItem):
         self.pixmap_item = None  # 用於顯示拖放圖片的項目
 
     def __hash__(self):
-        return hash(self.name)
+        return hash(self.name) # ᛁ ᛞᚩᚾ ᛏ ᚴᚾᚩᚹ ᚹᚻᚨᛏ ᛁᛋ ᛏᚻᛁᛋ ᛚ ᚩ ᛚ
 
     def connect(self, target_node):
         if target_node in [conn[0] for conn in self.connections]:
