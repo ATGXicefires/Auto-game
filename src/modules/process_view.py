@@ -211,11 +211,29 @@ class ProcessView(QWidget):
         
         menu = QMenu(self)
         
-        # 如果點擊到的是圖片節點或有圖片被選中，添加刪除選項
+        # 如果點擊到的是圖片節點或有圖片被選中，添加屬性和刪除選項
         selected_items = [item for item in self.graphics_scene.selectedItems() 
                          if isinstance(item, PixmapNode)]
         
         if isinstance(item, PixmapNode) or selected_items:
+            # 添加屬性選項及其子選單
+            properties_menu = menu.addMenu("屬性")
+            
+            # 點擊設定
+            click_action = properties_menu.addAction("點擊設定")
+            click_action.triggered.connect(lambda: self.show_click_settings(item if isinstance(item, PixmapNode) else selected_items[0]))
+            
+            # 詳細設定
+            detail_action = properties_menu.addAction("詳細設定")
+            detail_action.triggered.connect(lambda: self.show_detail_settings(item if isinstance(item, PixmapNode) else selected_items[0]))
+            
+            # 其他
+            other_action = properties_menu.addAction("其他")
+            other_action.triggered.connect(lambda: self.show_other_settings(item if isinstance(item, PixmapNode) else selected_items[0]))
+            
+            menu.addSeparator()  # 添加分隔線
+            
+            # 原有的刪除選項
             delete_action = menu.addAction("刪除圖片")
             # 如果直接點擊到圖片，刪除該圖片；否則刪除所有選中的圖片
             if isinstance(item, PixmapNode):
@@ -242,6 +260,27 @@ class ProcessView(QWidget):
             self.toggleConnectionMode()
         
         event.accept()
+
+    def show_click_settings(self, item: PixmapNode):
+        """顯示點擊設定"""
+        msg = QMessageBox(self)
+        msg.setWindowTitle("點擊設定")
+        msg.setText("沒有功能owo")
+        msg.exec_()
+
+    def show_detail_settings(self, item: PixmapNode):
+        """顯示詳細設定"""
+        msg = QMessageBox(self)
+        msg.setWindowTitle("詳細設定")
+        msg.setText("沒有功能owo")
+        msg.exec_()
+
+    def show_other_settings(self, item: PixmapNode):
+        """顯示其他設定"""
+        msg = QMessageBox(self)
+        msg.setWindowTitle("其他設定")
+        msg.setText("沒有功能owo")
+        msg.exec_()
 
     def clear_canvas(self):
         """清空整個畫布，包括所有圖片和連線"""
