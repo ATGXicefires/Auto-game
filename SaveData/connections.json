@@ -1,32 +1,57 @@
 {
-    "106447193_p0_master1200.jpg": {
+    "E.png": {
         "position": {
-            "x": 1296.3454540799994,
-            "y": 629.4734591999995
+            "x": -855.792,
+            "y": -25.535999999999945
+        },
+        "connections": []
+    },
+    "D.png": {
+        "position": {
+            "x": -615.1679999999998,
+            "y": 285.11999999999995
         },
         "connections": [
             {
-                "from": "106447193_p0_master1200.jpg",
-                "to": "3f53bfffgy1hw272g5ktuj20u01hcdxi.jpg"
-            },
-            {
-                "from": "106447193_p0_master1200.jpg",
-                "to": "202204-貝.png"
+                "from": "E.png",
+                "to": "D.png"
             }
         ]
     },
-    "202204-貝.png": {
+    "C.png": {
         "position": {
-            "x": 2932.4751667199994,
-            "y": 421.3820620800002
+            "x": -255.7439999999999,
+            "y": 418.1759999999998
         },
-        "connections": []
+        "connections": [
+            {
+                "from": "D.png",
+                "to": "C.png"
+            }
+        ]
     },
-    "3f53bfffgy1hw272g5ktuj20u01hcdxi.jpg": {
+    "B.png": {
         "position": {
-            "x": 34.398535679999895,
-            "y": 675.0712627200003
+            "x": 1.7279999999999518,
+            "y": 210.8159999999999
         },
-        "connections": []
+        "connections": [
+            {
+                "from": "C.png",
+                "to": "B.png"
+            }
+        ]
+    },
+    "A.png": {
+        "position": {
+            "x": 69.12,
+            "y": -89.85599999999998
+        },
+        "connections": [
+            {
+                "from": "B.png",
+                "to": "A.png"
+            }
+        ]
     }
 }

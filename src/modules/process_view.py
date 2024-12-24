@@ -71,8 +71,18 @@ class PixmapNode(QGraphicsPixmapItem):
 
     def itemChange(self, change, value):
         if change == QGraphicsPixmapItem.ItemPositionChange:
+            # 更新所有以此節點為起點或終點的連線
             for otherNode, lineObj, arrowObj, myOffset, otherOffset in self.connections:
-                self.updateLineAndArrow(lineObj, arrowObj, otherNode, myOffset, otherOffset)
+                # 如果我是起點（有箭頭），用我的更新方法
+                if arrowObj:
+                    self.updateLineAndArrow(lineObj, arrowObj, otherNode, myOffset, otherOffset)
+                # 如果我是終點（無箭頭），用對方的更新方法
+                else:
+                    # 在對方的連線列表中找到對應的連線
+                    for other_conn in otherNode.connections:
+                        if other_conn[0] == self and other_conn[2]:  # 找到指向我的連線
+                            otherNode.updateLineAndArrow(lineObj, other_conn[2], self, otherOffset, myOffset)
+                            break
         return super().itemChange(change, value)
 
     def updateLineAndArrow(self, lineObj, arrowObj, otherNode, myOffset, theirOffset):
@@ -88,16 +98,33 @@ class PixmapNode(QGraphicsPixmapItem):
             their_point_in_scene.x(), their_point_in_scene.y()
         )
 
-        # 更新箭頭位置和角度
-        mid_x = (my_point_in_scene.x() + their_point_in_scene.x()) / 2
-        mid_y = (my_point_in_scene.y() + their_point_in_scene.y()) / 2
-        arrowObj.setPos(mid_x, mid_y)
+        # 只有當箭頭物件存在時才更新箭頭
+        if arrowObj:
+            # 更新箭頭位置和角度
+            mid_x = (my_point_in_scene.x() + their_point_in_scene.x()) / 2
+            mid_y = (my_point_in_scene.y() + their_point_in_scene.y()) / 2
+            arrowObj.setPos(mid_x, mid_y)
 
-        # 算出角度，atan2(dy, dx) 傳回弧度，轉度數後再套用
-        dx = their_point_in_scene.x() - my_point_in_scene.x()
-        dy = their_point_in_scene.y() - my_point_in_scene.y()
-        angle_deg = math.degrees(math.atan2(dy, dx))
-        arrowObj.setRotation(angle_deg)
+            # 算出角度，atan2(dy, dx) 傳回弧度，轉度數後再套用
+            dx = their_point_in_scene.x() - my_point_in_scene.x()
+            dy = their_point_in_scene.y() - my_point_in_scene.y()
+            angle_deg = math.degrees(math.atan2(dy, dx))
+            arrowObj.setRotation(angle_deg)
+
+    def mousePressEvent(self, event):
+        """當圖片被點擊時觸發"""
+        # 取得 ProcessView 實例
+        scene = self.scene()
+        if scene and scene.views():
+            view = scene.views()[0]
+            if isinstance(view.parent(), ProcessView):
+                process_view = view.parent()
+                file_name = os.path.basename(self.file_path)
+                process_view.label.setText(f"已選擇圖片: {file_name}")
+        
+        # 確保事件繼續傳遞
+        event.accept()
+        super().mousePressEvent(event)
 
 class ProcessView(QWidget):
     def __init__(self, parent=None):
@@ -341,7 +368,7 @@ class ProcessView(QWidget):
                         itemB: PixmapNode, offsetB: QPointF):
         """
         建立「A -> B」的實線與箭頭，並記錄端點對應的 local offset。
-        同時確保線條非 cosmetic，讓它能跟隨場景縮放。
+        箭頭方向固定從 A 指向 B。
         """
         # 計算 A / B 對應點的世界座標，用來畫線
         a_in_scene = itemA.mapToScene(offsetA)
@@ -364,18 +391,21 @@ class ProcessView(QWidget):
         # 不設定忽略變形 (ItemIgnoresTransformations=False)，讓箭頭也可以跟隨縮放
         self.graphics_scene.addItem(arrow)
 
-        # 箭頭初始位置與角度
+        # 箭頭位置與角度：固定從 A 指向 B
         mid_x = (a_in_scene.x() + b_in_scene.x()) / 2
         mid_y = (a_in_scene.y() + b_in_scene.y()) / 2
         arrow.setPos(mid_x, mid_y)
+        
+        # 計算從 A 到 B 的方向
         dx = b_in_scene.x() - a_in_scene.x()
         dy = b_in_scene.y() - a_in_scene.y()
         angle_deg = math.degrees(math.atan2(dy, dx))
         arrow.setRotation(angle_deg)
 
-        # 雙向記錄連線：A->B 和 B->A 都要記錄
+        # 只在 A 的 connections 中記錄這是「指向 B」的連線
         itemA.connections.append((itemB, line, arrow, offsetA, offsetB))
-        itemB.connections.append((itemA, line, arrow, offsetB, offsetA))  # 注意：B 的 offset 順序要對調
+        # B 的 connections 中不記錄箭頭方向資訊
+        itemB.connections.append((itemA, line, None, offsetB, offsetA))
 
     def dragEnterEvent(self, event: QDragEnterEvent):
         if event.mimeData().hasUrls():
@@ -536,15 +566,13 @@ class ProcessView(QWidget):
                 }
                 
                 # 遍歷該節點的所有連線
-                for target_node, _, _, _, _ in item.connections:
+                for target_node, _, arrow, _, _ in item.connections:
                     target_file = os.path.basename(target_node.file_path)
-                    # 只記錄單向連線（避免重複）
-                    if (target_file, source_file) not in [(c['from'], c['to']) 
-                        for data in connections_data.values() 
-                        for c in data.get('connections', [])]:
+                    # 只記錄有箭頭的連線（即我是起點的連線）
+                    if arrow:
                         node_data['connections'].append({
-                            'from': source_file,
-                            'to': target_file
+                            'from': target_file,  # 交換 from 和 to
+                            'to': source_file
                         })
                 
                 connections_data[source_file] = node_data
@@ -625,12 +653,12 @@ class ProcessView(QWidget):
                         from_file = conn['from']
                         to_file = conn['to']
                         
-                        # 確保連線方向正確：只處理 from->to 的連線
-                        if from_file == file_name and from_file in node_map and to_file in node_map:
-                            from_node = node_map[from_file]
-                            to_node = node_map[to_file]
+                        # 交換連線方向：from 變成 to，to 變成 from
+                        if from_file in node_map and to_file in node_map:
+                            from_node = node_map[to_file]  # 注意這裡交換了
+                            to_node = node_map[from_file]  # 注意這裡交換了
                             
-                            # 建立連線，箭頭從 from 指向 to
+                            # 建立連線
                             self.connectTwoItems(
                                 from_node,
                                 QPointF(from_node.boundingRect().center()),
