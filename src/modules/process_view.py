@@ -2,6 +2,7 @@ import math
 import shutil
 import os
 import json
+import time
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QLabel, QGraphicsView, QGraphicsScene,
     QMenu, QGraphicsLineItem, QGraphicsPixmapItem, QGraphicsPolygonItem,
@@ -228,7 +229,7 @@ class ProcessView(QWidget):
             detail_action.triggered.connect(lambda: self.show_detail_settings(item if isinstance(item, PixmapNode) else selected_items[0]))
             
             # 其他
-            other_action = properties_menu.addAction("其他")
+            other_action = properties_menu.addAction("其他設定")
             other_action.triggered.connect(lambda: self.show_other_settings(item if isinstance(item, PixmapNode) else selected_items[0]))
             
             menu.addSeparator()  # 添加分隔線
@@ -270,9 +271,45 @@ class ProcessView(QWidget):
 
     def show_detail_settings(self, item: PixmapNode):
         """顯示詳細設定"""
+        file_name = os.path.basename(item.file_path)
+        file_path = item.file_path
+        pos = item.pos()
+        
+        # 取得檔案資訊
+        file_stats = os.stat(file_path)
+        file_size = file_stats.st_size / 1024  # 轉換為 KB
+        file_modified = time.strftime('%Y-%m-%d %H:%M:%S', 
+                                    time.localtime(file_stats.st_mtime))
+        
+        # 取得圖片資訊
+        pixmap = item.pixmap()
+        width = pixmap.width()
+        height = pixmap.height()
+        
+        # 計算連線資訊
+        outgoing_connections = sum(1 for conn in item.connections if conn[2])  # 有箭頭的連線
+        incoming_connections = sum(1 for conn in item.connections if not conn[2])  # 無箭頭的連線
+        
+        # 建立詳細資訊文字
+        detail_text = (
+            f"檔案名稱：{file_name}\n"
+            f"檔案路徑：{file_path}\n"
+            f"檔案大小：{file_size:.2f} KB\n"
+            f"修改時間：{file_modified}\n"
+            f"\n"
+            f"圖片尺寸：{width} x {height}\n"
+            f"場景位置：({pos.x():.2f}, {pos.y():.2f})\n"
+            f"\n"
+            f"連線資訊：\n"
+            f"  ➤ 輸出連線：{outgoing_connections}\n"
+            f"  ➤ 輸入連線：{incoming_connections}\n"
+            f"  ➤ 總連線數：{len(item.connections)}"
+        )
+        
         msg = QMessageBox(self)
-        msg.setWindowTitle("詳細設定")
-        msg.setText("沒有功能owo")
+        msg.setWindowTitle(f"詳細資訊 - {file_name}")
+        msg.setText(detail_text)
+        msg.setIcon(QMessageBox.Information)
         msg.exec_()
 
     def show_other_settings(self, item: PixmapNode):
@@ -621,6 +658,9 @@ class ProcessView(QWidget):
             json.dump(connections_data, f, ensure_ascii=False, indent=4)
         
         self.label.setText(f"已保存連線關係和位置到: {os.path.basename(json_path)}")
+        
+        # 儲存完連線後，分析並儲存步驟順序，傳入實際使用的 json_path
+        self.analyze_and_save_steps(json_path)
 
     def load_connections(self):
         """從 JSON 檔案載入連線關係和圖片位置"""
@@ -757,6 +797,68 @@ class ProcessView(QWidget):
             json.dump({}, f, ensure_ascii=False, indent=4)
         
         self.label.setText("已清空所有連線關係")
+
+    def analyze_and_save_steps(self, json_path):
+        """分析連線關係並儲存步驟順序"""
+        try:
+            with open(json_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            # 建立圖形關係字典
+            graph = {}
+            for node_name, node_data in data.items():
+                if node_name != 'steps':  # 跳過 steps 欄位
+                    graph[node_name] = []
+                    for conn in node_data.get('connections', []):
+                        graph[conn['from']] = graph.get(conn['from'], [])
+                        graph[conn['from']].append(conn['to'])
+            
+            # 找出起點（沒有被指向的節點）
+            all_nodes = set(graph.keys())
+            destination_nodes = set()
+            for connections in graph.values():
+                destination_nodes.update(connections)
+            start_nodes = all_nodes - destination_nodes
+            
+            # 從起點開始進行深度優先搜索
+            def dfs(node, visited, path):
+                if node in path:  # 檢測循環
+                    return None
+                path.append(node)
+                if not graph.get(node, []):  # 如果是終點
+                    return path
+                for next_node in graph.get(node, []):
+                    result = dfs(next_node, visited, path.copy())
+                    if result:
+                        return result
+                return None
+            
+            # 尋找完整路徑
+            complete_path = None
+            for start in start_nodes:
+                path = dfs(start, set(), [])
+                if path:
+                    complete_path = path
+                    break
+            
+            if complete_path:
+                # 將步驟資訊加入到 JSON 中
+                steps = {}
+                for i, node in enumerate(complete_path):
+                    steps[f"Step{i+1}"] = node
+                
+                data['steps'] = steps
+                
+                # 儲存更新後的 JSON
+                with open(json_path, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, indent=4, ensure_ascii=False)
+                
+                self.label.setText(f"已分析並儲存步驟順序：{' -> '.join(complete_path)}")
+            else:
+                self.label.setText("無法找到完整的連線路徑")
+            
+        except Exception as e:
+            self.label.setText(f"分析步驟時發生錯誤：{str(e)}")
 
 class CustomGraphicsView(QGraphicsView):
     def __init__(self, parent=None):
