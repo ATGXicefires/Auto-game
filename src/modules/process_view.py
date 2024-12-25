@@ -804,14 +804,15 @@ class ProcessView(QWidget):
             with open(json_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             
-            # 建立圖形關係字典
+            # 建立圖形關係字典 - 修正連線方向
             graph = {}
             for node_name, node_data in data.items():
                 if node_name != 'steps':  # 跳過 steps 欄位
                     graph[node_name] = []
                     for conn in node_data.get('connections', []):
-                        graph[conn['from']] = graph.get(conn['from'], [])
-                        graph[conn['from']].append(conn['to'])
+                        # 修正：to 是箭頭的起點，from 是終點
+                        graph[conn['to']] = graph.get(conn['to'], [])
+                        graph[conn['to']].append(conn['from'])
             
             # 找出起點（沒有被指向的節點）
             all_nodes = set(graph.keys())

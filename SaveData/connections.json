@@ -1,51 +1,8 @@
 {
-    "E.png": {
-        "position": {
-            "x": -211.0,
-            "y": 134.0
-        },
-        "connections": []
-    },
-    "D.png": {
-        "position": {
-            "x": 188.0,
-            "y": 171.0
-        },
-        "connections": [
-            {
-                "from": "E.png",
-                "to": "D.png"
-            }
-        ]
-    },
-    "C.png": {
-        "position": {
-            "x": 586.4,
-            "y": 111.59999999999997
-        },
-        "connections": [
-            {
-                "from": "D.png",
-                "to": "C.png"
-            }
-        ]
-    },
-    "B.png": {
-        "position": {
-            "x": 433.0,
-            "y": -93.0
-        },
-        "connections": [
-            {
-                "from": "C.png",
-                "to": "B.png"
-            }
-        ]
-    },
     "A.png": {
         "position": {
-            "x": -10.0,
-            "y": -120.0
+            "x": -85.0,
+            "y": 180.0
         },
         "connections": [
             {
@@ -54,11 +11,28 @@
             }
         ]
     },
+    "B.png": {
+        "position": {
+            "x": 220.0,
+            "y": -13.0
+        },
+        "connections": [
+            {
+                "from": "C.png",
+                "to": "B.png"
+            }
+        ]
+    },
+    "C.png": {
+        "position": {
+            "x": 548.0,
+            "y": 168.0
+        },
+        "connections": []
+    },
     "steps": {
-        "Step1": "E.png",
-        "Step2": "D.png",
-        "Step3": "C.png",
-        "Step4": "B.png",
-        "Step5": "A.png"
+        "Step1": "A.png",
+        "Step2": "B.png",
+        "Step3": "C.png"
     }
 }
