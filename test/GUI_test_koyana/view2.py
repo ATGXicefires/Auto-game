@@ -61,39 +61,69 @@ class CanvasView(QGraphicsView):
         self.start_item = None  # Start item of the line
 
     def add_grid(self):
-        """Draw grid lines on the scene to aid in alignment."""
-        # Collect items that are not grid lines to preserve them.
-        existing_items = [
-            item for item in self.scene.items()
-            if not isinstance(item, QGraphicsLineItem)
-        ]
+       """Draw grid lines on the scene to aid in alignment."""
+       # 移除现有的网格线，而不影响其他项目。
+       for item in self.scene.items():
+           if isinstance(item, QGraphicsLineItem) and getattr(item, 'is_grid_line', False):
+               self.scene.removeItem(item)
 
-        # Remove all existing grid lines.
-        for item in self.scene.items():
-            if isinstance(item, QGraphicsLineItem):
-                self.scene.removeItem(item)
+       scene_rect = self.scene.sceneRect()
 
-        # Restore preserved items (e.g., images or other user-added elements).
-        for item in existing_items:
-            self.scene.addItem(item)
+       # 根據縮放因子調整線條粗細
+       scale_factor = self.transform().m11()
+       pen_color = QColor(200, 200, 200, 100)
+       pen = QPen(pen_color)
+       pen.setWidthF(1 / scale_factor)
 
-        scene_rect = self.scene.sceneRect()
+       # 繪製水平線
+       y = scene_rect.top()
+       while y <= scene_rect.bottom():
+           line = self.scene.addLine(scene_rect.left(), y, scene_rect.right(), y, pen)
+           line.is_grid_line = True  # 標記為網格線
+           y += self.current_grid_size
 
-        pen_color = QColor(200, 200, 200, 100)  # Light gray grid line color.
-        pen = QPen(pen_color)
-        pen.setWidth(1)
+       # 繪製垂直線
+       x = scene_rect.left()
+       while x <= scene_rect.right():
+           line = self.scene.addLine(x, scene_rect.top(), x, scene_rect.bottom(), pen)
+           line.is_grid_line = True  # 標記為網格線
+           x += self.current_grid_size
 
-        # Draw horizontal lines.
-        y = scene_rect.top()
-        while y <= scene_rect.bottom():
-            self.scene.addLine(scene_rect.left(), y, scene_rect.right(), y, pen)
-            y += self.current_grid_size
+    def add_connection(self, start_item, end_item):
+       """Create a connection line between two items."""
+       if not start_item or not end_item:
+           return
 
-        # Draw vertical lines.
-        x = scene_rect.left()
-        while x <= scene_rect.right():
-            self.scene.addLine(x, scene_rect.top(), x, scene_rect.bottom(), pen)
-            x += self.current_grid_size
+       # 計算起點與終點位置
+       start_center = start_item.sceneBoundingRect().center()
+       end_center = end_item.sceneBoundingRect().center()
+
+       pen = QPen(QColor(0, 0, 255))  # 藍色箭頭線
+       pen.setWidthF(2 / self.view.transform().m11())  # 根據縮放調整線條寬度
+
+       # 添加箭頭線
+       line = self.scene.addLine(start_center.x(), start_center.y(), end_center.x(), end_center.y(), pen)
+       line.is_connection = True  # 標記為連線
+
+    def update_scene_on_zoom(self):
+       """Update all items in the scene during zooming."""
+       scale_factor = self.view.transform().m11()
+
+       # 更新網格線
+       for item in self.scene.items():
+           if isinstance(item, QGraphicsLineItem):
+               if getattr(item, 'is_grid_line', False):
+                   pen = item.pen()
+                   pen.setWidthF(1 / scale_factor)
+                   item.setPen(pen)
+               elif getattr(item, 'is_connection', False):
+                   pen = item.pen()
+                   pen.setWidthF(2 / scale_factor)
+                   item.setPen(pen)
+
+    #Zoom event integration
+    #self.view.viewport().installEventFilter(self)
+
 
 
     def contextMenuEvent(self, event):

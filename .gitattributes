@@ -1,0 +1,17 @@
+# 自動處理換行符
+* text=auto
+
+# 為不同操作系統設置換行符樣式
+*.sh    text eol=lf
+*.bat   text eol=crlf
+
+# 標記二進制文件
+*.png   binary
+*.jpg   binary
+
+# 設置合併策略
+*.lock  merge=ours
+
+# 自定義語法高亮
+*.md    linguist-language=Markdown
+*.py    linguist-language=Python
