@@ -17,6 +17,7 @@ from PySide6.QtCore import (
     Qt, QPointF, QEvent, QMimeData, QUrl
 )
 from functions import get_resource_path
+from log_view import LogView
 
 class ArrowItem(QGraphicsPolygonItem):
     """
@@ -128,10 +129,11 @@ class PixmapNode(QGraphicsPixmapItem):
         super().mousePressEvent(event)
 
 class ProcessView(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, log_view=None):
         super(ProcessView, self).__init__(parent)
+        self.log_view = log_view
         self.setAcceptDrops(True)  # 啟用拖放功能
-
+        
         # 整體使用水平佈局，左側為圖片列表，右側為原本場景與標籤
         main_layout = QHBoxLayout(self)
         self.setLayout(main_layout)
@@ -204,6 +206,13 @@ class ProcessView(QWidget):
         
         # 將按鈕容器加入左側面板
         self.left_panel.addWidget(self.button_container)
+
+        # 使用 get_resource_path 處理所有檔案路徑
+        self.detect_folder = get_resource_path('detect')
+        self.save_data_folder = get_resource_path('SaveData')
+        
+        if self.log_view:
+            self.log_view.append_log("流程視圖已初始化")
 
     def contextMenuEvent(self, event: QContextMenuEvent):
         # 獲取點擊位置的場景座標
@@ -336,7 +345,7 @@ class ProcessView(QWidget):
             self.graphics_scene.clear()
             # 清空列表
             self.list_widget.clear()
-            self.label.setText("已清空畫布")
+            self.update_status("已清空畫布")
 
     def delete_image(self, item: PixmapNode):
         """刪除圖片及其相關連線"""
@@ -366,17 +375,17 @@ class ProcessView(QWidget):
         # 3. 從場景中移除圖片節點
         self.graphics_scene.removeItem(item)
         
-        self.label.setText(f"已刪除圖片: {file_name}")
+        self.update_status(f"已刪除圖片: {file_name}")
 
     def toggleConnectionMode(self):
         self.is_connection_mode = not self.is_connection_mode
         if self.is_connection_mode:
-            self.label.setText("連線模式：點選圖片並拖曳到另一張圖片，以建立連線")
+            self.update_status("連線模式：點選圖片並拖曳到另一張圖片，以建立連線")
             for item in self.graphics_scene.items():
                 if isinstance(item, PixmapNode):
                     item.setFlag(QGraphicsPixmapItem.ItemIsMovable, False)
         else:
-            self.label.setText("一般模式：拖曳圖片或場景")
+            self.update_status("一般模式：拖曳圖片或場景")
             for item in self.graphics_scene.items():
                 if isinstance(item, PixmapNode):
                     item.setFlag(QGraphicsPixmapItem.ItemIsMovable, True)
@@ -431,9 +440,9 @@ class ProcessView(QWidget):
                         if isinstance(end_item, PixmapNode) and end_item != self.start_item:
                             end_offset = end_item.mapFromScene(scene_pos)
                             self.connectTwoItems(self.start_item, self.start_offset, end_item, end_offset)
-                            self.label.setText("已建立連線")
+                            self.update_status("已建立連線")
                         else:
-                            self.label.setText("取消連線")
+                            self.update_status("取消連線")
 
                     self.start_item = None
                     self.is_connecting = False
@@ -528,7 +537,7 @@ class ProcessView(QWidget):
                 if not items:
                     self.parent().image_list_widget.addItem(file_name)
 
-        self.label.setText(f"已載入圖片: {file_name}")
+        self.update_status(f"已載入圖片: {file_name}")
 
     def wheelEvent(self, event: QWheelEvent):
         """使用滾輪放大縮小，因 pen.setCosmetic(False)，線條與箭頭會跟隨縮放。"""
@@ -657,7 +666,7 @@ class ProcessView(QWidget):
         with open(json_path, 'w', encoding='utf-8') as f:
             json.dump(connections_data, f, ensure_ascii=False, indent=4)
         
-        self.label.setText(f"已保存連線關係和位置到: {os.path.basename(json_path)}")
+        self.update_status(f"已保存連線關係和位置到: {os.path.basename(json_path)}")
         
         # 儲存完連線後，分析並儲存步驟順序，傳入實際使用的 json_path
         self.analyze_and_save_steps(json_path)
@@ -854,12 +863,18 @@ class ProcessView(QWidget):
                 with open(json_path, 'w', encoding='utf-8') as f:
                     json.dump(data, f, indent=4, ensure_ascii=False)
                 
-                self.label.setText(f"已分析並儲存步驟順序：{' -> '.join(complete_path)}")
+                self.update_status(f"已分析並儲存步驟順序：{' -> '.join(complete_path)}")
             else:
-                self.label.setText("無法找到完整的連線路徑")
+                self.update_status("無法找到完整的連線路徑")
             
         except Exception as e:
-            self.label.setText(f"分析步驟時發生錯誤：{str(e)}")
+            self.update_status(f"分析步驟時發生錯誤：{str(e)}")
+
+    def update_status(self, message):
+        """更新狀態訊息，同時顯示在 label 和 log 視圖中"""
+        self.label.setText(message)
+        if hasattr(self, 'log_view') and self.log_view:
+            self.log_view.append_log(message)
 
 class CustomGraphicsView(QGraphicsView):
     def __init__(self, parent=None):
