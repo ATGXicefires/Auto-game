@@ -34,3 +34,13 @@ test/json_test/build/
 
 # package
 build/
+dist/
+
+# icon & version
+app.ico
+file_version.txt
+
+# other
+高三專題報告_簡報.pptx
+~$高三專題報告_簡報.pptx
+ADB/
