@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (QMainWindow, QVBoxLayout, QHBoxLayout, QPushButto
 from view1 import View1
 from view2 import View2
 from view3 import View3
-import stylecache
+import until.stylecache as stylecache
 
 class MainWindow(QMainWindow):
     def __init__(self):
