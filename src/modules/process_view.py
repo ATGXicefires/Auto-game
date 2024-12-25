@@ -224,8 +224,8 @@ class ProcessView(QWidget):
             click_action = properties_menu.addAction("點擊設定")
             click_action.triggered.connect(lambda: self.show_click_settings(item if isinstance(item, PixmapNode) else selected_items[0]))
             
-            # 詳細設定
-            detail_action = properties_menu.addAction("詳細設定")
+            # 圖片詳細資料
+            detail_action = properties_menu.addAction("圖片詳細資料")
             detail_action.triggered.connect(lambda: self.show_detail_settings(item if isinstance(item, PixmapNode) else selected_items[0]))
             
             # 其他
@@ -266,11 +266,11 @@ class ProcessView(QWidget):
         """顯示點擊設定"""
         msg = QMessageBox(self)
         msg.setWindowTitle("點擊設定")
-        msg.setText("沒有功能owo")
+        msg.setText("只接受使用左鍵點擊 :>")
         msg.exec_()
 
     def show_detail_settings(self, item: PixmapNode):
-        """顯示詳細設定"""
+        """顯示圖片詳細資料"""
         file_name = os.path.basename(item.file_path)
         file_path = item.file_path
         pos = item.pos()
