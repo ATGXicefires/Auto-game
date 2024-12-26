@@ -18,13 +18,12 @@ from functions import (
     get_resource_path, 
     load_json_variables,
     get_max_step_value,
-    Click_step_by_step,
-    ADB_match_template,
     set_adb_connection,
-    ADB_Click_step_by_step
+    load_steps_from_json
 )
 from log_view import LogView
 from process_view import ProcessView
+from clicking_functions import Click_step_by_step, ADB_Click_step_by_step
 import os
 import json
 
@@ -45,6 +44,23 @@ class ClickWorker(QThread):
         else:
             Click_step_by_step(self.step_array, self.log_view)
         self.finished.emit()
+
+class ClickWorker2(QThread):
+    finished = Signal(bool, int)  # 修改信號，傳送成功狀態和當前步驟
+    
+    def __init__(self, step_array, log_view, is_adb_mode):
+        super().__init__()
+        self.step_array = step_array
+        self.log_view = log_view
+        self.is_adb_mode = is_adb_mode
+        
+    def run(self):
+        if self.is_adb_mode:
+            success, current_step = ADB_Click_step_by_step(self.step_array, self.log_view)
+        else:
+            success, current_step = Click_step_by_step(self.step_array, self.log_view)
+        
+        self.finished.emit(success, current_step)
 
 class MainWindow(QMainWindow):
     start_signal = Signal()  # 確保信號正確定義
@@ -255,6 +271,13 @@ class MainWindow(QMainWindow):
         # 保存當前模式到 setting.json
         self.save_mode_setting()
 
+    def handle_click_finished(self, success, current_step):
+        """處理點擊操作完成的回調"""
+        if success:
+            self.log_view.append_log(f"所有步驟執行完成！總共執行了 {current_step} 步")
+        else:
+            self.log_view.append_log(f"執行失敗，在第 {current_step} 步停止")
+
     def on_start_button_click(self):
         # 這裡是 Start_ON 的邏輯
         # 獲取當前模式
@@ -284,7 +307,7 @@ class MainWindow(QMainWindow):
             self.log_view.append_log("已取消執行")
             return
 
-        # 根據選擇的檔案類型執行不同的邏輯
+        # 根據選擇的檔案執行相應的邏輯
         if item == 'sv.json':
             # 使用原本的邏輯執行 sv.json
             json_path = os.path.join(save_path, item)
@@ -311,9 +334,13 @@ class MainWindow(QMainWindow):
             self.worker.start()
         
         else:
-            # TODO: 實作其他類型檔案的執行邏輯
-            self.log_view.append_log(f"選擇執行存檔: {item}")
-            self.log_view.append_log("TODO: 將實作其他類型檔案的執行邏輯")
+            # 執行新格式的存檔
+            self.step_array, max_step_value = load_steps_from_json(os.path.join(save_path, item))
+            self.log_view.append_log(f"載入了 {max_step_value} 個步驟")
+            
+            self.worker = ClickWorker2(self.step_array, self.log_view, self.is_adb_mode)
+            self.worker.finished.connect(self.handle_click_finished)
+            self.worker.start()
 
     def display_image(self, item):
         display_image(self, item)

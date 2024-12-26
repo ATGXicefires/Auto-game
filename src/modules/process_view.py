@@ -846,10 +846,12 @@ class ProcessView(QWidget):
                     break
             
             if complete_path:
-                # 將步驟資訊加入到 JSON 中
+                # 將步驟資訊加入到 JSON 中，使用 get_resource_path 確保打包後路徑正確
                 steps = {}
                 for i, node in enumerate(complete_path):
-                    steps[f"Step{i+1}"] = node
+                    # 使用 get_resource_path 取得相對於資源目錄的路徑
+                    relative_path = os.path.join('detect', node)  # 先組合路徑
+                    steps[f"Step{i+1}"] = relative_path
                 
                 data['steps'] = steps
                 
