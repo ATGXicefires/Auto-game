@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QMainWindow, QTabWidget, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget, QLabel, QSlider, QLineEdit, QGraphicsView, QGraphicsScene
+from PySide6.QtWidgets import QMainWindow, QTabWidget, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget, QLabel, QSlider, QLineEdit, QGraphicsView, QGraphicsScene, QInputDialog
 from PySide6.QtGui import QFont, QPixmap, QPainter, QIntValidator
 from PySide6.QtCore import Qt, Signal, QThread
 from ui_logic import (
@@ -262,35 +262,58 @@ class MainWindow(QMainWindow):
         mode_text = "ADB" if self.is_adb_mode else "Windows"
         self.log_view.append_log(f"當前模式: {mode_text}")
 
-        # 使用 get_resource_path 來獲取 sv.json 的正確路徑
-        json_path = get_resource_path('SaveData/sv.json')
-        # 導入 sv.json 的變數
-        json_variables = load_json_variables(json_path)
-        max_step_value = 0
-        self.log_view.append_log("Start")
+        # 找出 SaveData 資料夾中所有的 json 檔案
+        save_path = get_resource_path('SaveData')
+        json_files = [f for f in os.listdir(save_path) if f.endswith('.json')]
         
-        # 最小化主窗口
-        #self.showMinimized()
-
-        # 找出 "Step[Y]" 的最大 Y 值
-        max_step_value = get_max_step_value(json_variables)
-        self.log_view.append_log(f"最大 Step[Y] 值: {max_step_value}")
-
-        # 將 Step[Y] 的內容值存入 step_array
-        self.step_array = []  # 將 step_array 存儲為實例變數
-        for i in range(1, max_step_value + 1):
-            step_key = f"Step[{i}]"
-            if step_key in json_variables:
-                self.step_array.append(json_variables[step_key])
+        if not json_files:
+            self.log_view.append_log("錯誤：找不到任何存檔檔案")
+            return
         
-        # 打印出 step_array 中的所有值
-        for index in range(max_step_value):
-            self.log_view.append_log(f"step_array[{index}]: {self.step_array[index]}")
+        # 讓使用者選擇要執行的存檔
+        item, ok = QInputDialog.getItem(
+            self,
+            "選擇存檔",
+            "請選擇要執行的存檔：",
+            json_files,
+            0,
+            False
+        )
+        
+        if not ok:
+            self.log_view.append_log("已取消執行")
+            return
 
-        # 創建並啟動 ClickWorker 執行緒
-        self.worker = ClickWorker(self.step_array, self.log_view, self.is_adb_mode)
-        self.worker.finished.connect(lambda: self.log_view.append_log("點擊操作完成"))
-        self.worker.start()
+        # 根據選擇的檔案類型執行不同的邏輯
+        if item == 'sv.json':
+            # 使用原本的邏輯執行 sv.json
+            json_path = os.path.join(save_path, item)
+            self.log_view.append_log(f"選擇執行存檔: {item}")
+            
+            json_variables = load_json_variables(json_path)
+            max_step_value = 0
+            self.log_view.append_log("Start")
+
+            max_step_value = get_max_step_value(json_variables)
+            self.log_view.append_log(f"最大 Step[Y] 值: {max_step_value}")
+
+            self.step_array = []
+            for i in range(1, max_step_value + 1):
+                step_key = f"Step[{i}]"
+                if step_key in json_variables:
+                    self.step_array.append(json_variables[step_key])
+            
+            for index in range(max_step_value):
+                self.log_view.append_log(f"step_array[{index}]: {self.step_array[index]}")
+
+            self.worker = ClickWorker(self.step_array, self.log_view, self.is_adb_mode)
+            self.worker.finished.connect(lambda: self.log_view.append_log("點擊操作完成"))
+            self.worker.start()
+        
+        else:
+            # TODO: 實作其他類型檔案的執行邏輯
+            self.log_view.append_log(f"選擇執行存檔: {item}")
+            self.log_view.append_log("TODO: 將實作其他類型檔案的執行邏輯")
 
     def display_image(self, item):
         display_image(self, item)

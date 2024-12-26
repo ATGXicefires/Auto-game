@@ -207,14 +207,22 @@ def clear_detect(main_window):
             print(f"清理已上傳的圖片時發生錯誤：{str(e)}")
 
 def clear_save_data(main_window):
-    """清理存檔資料夾內的檔案，但保留資料夾和 sv.json"""
+    """清理存檔資料夾內的檔案，保留 sv.json 但重置其內容"""
     cache_path = get_resource_path('SaveData')
     if os.path.exists(cache_path):
         # 遍歷資料夾中的所有檔案並刪除，但保留 sv.json
         for filename in os.listdir(cache_path):
-            # 跳過 sv.json
+            # 如果是 sv.json，重置其內容為 {}
             if filename == 'sv.json':
-                continue
+                sv_path = os.path.join(cache_path, filename)
+                try:
+                    with open(sv_path, 'w', encoding='utf-8') as f:
+                        f.write('{}')
+                    print(f"已重置 sv.json 內容")
+                    continue
+                except Exception as e:
+                    print(f"重置 sv.json 時發生錯誤: {e}")
+                    continue
                 
             file_path = os.path.join(cache_path, filename)
             try:
@@ -226,8 +234,8 @@ def clear_save_data(main_window):
                 print(f"刪除檔案時發生錯誤: {e}")
                 continue
         
-        print(f"已清除存檔資料夾內容: {cache_path}")
-        main_window.log_view.append_log("已清除存檔資料夾內容")
+        print(f"已清除存檔資料夾內容並重置 sv.json: {cache_path}")
+        main_window.log_view.append_log("已清除存檔資料夾內容並重置 sv.json")
 
 def process_set_button_click(main_window):
     """切換到流程視圖頁籤"""
