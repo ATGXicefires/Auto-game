@@ -11,7 +11,7 @@
 
 ### 想變動原代碼的話看這裡
 
-程式語言 : Python
+程式語言 : Python(3.10.6)
 
 1. git clone https://github.com/ATGXicefires/Auto-game.git
 2. 主要程式的編寫位置在src/modules/
