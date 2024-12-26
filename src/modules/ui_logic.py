@@ -46,8 +46,8 @@ class MainWindow(QMainWindow):
     def on_button_click(self):
         handle_file_selection(self)
 
-    def clear_steps(self):
-        clear_steps(self)
+    def clear_save_data(self):
+        clear_save_data(self)
 
     def clear_json_file(self):
         clear_json_file(self)
@@ -206,22 +206,36 @@ def clear_detect(main_window):
             QMessageBox.warning(main_window, "錯誤", f"清理已上傳的圖片時發生錯誤：{str(e)}")
             print(f"清理已上傳的圖片時發生錯誤：{str(e)}")
 
-def clear_steps(main_window):
-    # 清空 JSON 檔案中的 Step[Y] 條目，保留 Img[X] 條目
-    json_path = get_resource_path("SaveData/sv.json")
-    if os.path.exists(json_path):
-        with open(json_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-
-        # 刪除所有 Step[Y] 條目
-        keys_to_remove = [key for key in data.keys() if key.startswith("Step[")]
-        for key in keys_to_remove:
-            del data[key]
-
-        # 更新 JSON 文件
-        with open(json_path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
-        main_window.log_view.append_log("所有 Step[Y] 條目已清除")
+def clear_save_data(main_window):
+    """清理存檔資料夾內的檔案，保留 sv.json 但重置其內容"""
+    cache_path = get_resource_path('SaveData')
+    if os.path.exists(cache_path):
+        # 遍歷資料夾中的所有檔案並刪除，但保留 sv.json
+        for filename in os.listdir(cache_path):
+            # 如果是 sv.json，重置其內容為 {}
+            if filename == 'sv.json':
+                sv_path = os.path.join(cache_path, filename)
+                try:
+                    with open(sv_path, 'w', encoding='utf-8') as f:
+                        f.write('{}')
+                    print(f"已重置 sv.json 內容")
+                    continue
+                except Exception as e:
+                    print(f"重置 sv.json 時發生錯誤: {e}")
+                    continue
+                
+            file_path = os.path.join(cache_path, filename)
+            try:
+                if os.path.isfile(file_path):
+                    os.unlink(file_path)
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+            except Exception as e:
+                print(f"刪除檔案時發生錯誤: {e}")
+                continue
+        
+        print(f"已清除存檔資料夾內容並重置 sv.json: {cache_path}")
+        main_window.log_view.append_log("已清除存檔資料夾內容並重置 sv.json")
 
 def process_set_button_click(main_window):
     """切換到流程視圖頁籤"""

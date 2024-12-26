@@ -571,7 +571,7 @@ class ProcessView(QWidget):
         json_path = os.path.join(base_path, 'connections.json')
         
         # 檢查是否已有存檔
-        if os.path.exists(json_path) and os.path.getsize(json_path) > 2:  # 檢查檔案是否大於空的 JSON {}
+        if os.path.exists(json_path) and os.path.getsize(json_path) > 1:  # 檢查檔案是否大於空的 JSON {}
             # 詢問使用者要新建還是覆蓋
             msgBox = QMessageBox()
             msgBox.setWindowTitle("保存專案")
@@ -615,7 +615,7 @@ class ProcessView(QWidget):
                     json_path = os.path.join(base_path, f'connections_save{max_num + 1}.json')
                 else:  # 使用者取消
                     return
-                
+            
             elif clicked_button == overwriteButton:
                 # 找出所有存檔檔案
                 save_files = [f for f in os.listdir(base_path) 
@@ -799,12 +799,6 @@ class ProcessView(QWidget):
         # 從場景中移除所有線條和箭頭
         for item in lines_and_arrows:
             self.graphics_scene.removeItem(item)
-        
-        # 清空 connections.json 檔案
-        json_path = get_resource_path('SaveData/connections.json')
-        with open(json_path, 'w', encoding='utf-8') as f:
-            json.dump({}, f, ensure_ascii=False, indent=4)
-        
         self.label.setText("已清空所有連線關係")
 
     def analyze_and_save_steps(self, json_path):
@@ -852,10 +846,12 @@ class ProcessView(QWidget):
                     break
             
             if complete_path:
-                # 將步驟資訊加入到 JSON 中
+                # 將步驟資訊加入到 JSON 中，使用 get_resource_path 確保打包後路徑正確
                 steps = {}
                 for i, node in enumerate(complete_path):
-                    steps[f"Step{i+1}"] = node
+                    # 使用 get_resource_path 取得相對於資源目錄的路徑
+                    relative_path = os.path.join('detect', node)  # 先組合路徑
+                    steps[f"Step{i+1}"] = relative_path
                 
                 data['steps'] = steps
                 

@@ -97,6 +97,43 @@ def get_resource_path(relative_path):
     base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
     return os.path.join(base_path, relative_path)
 
+def load_steps_from_json(json_path):
+    """
+    從指定的 JSON 檔案讀取步驟資訊
+    
+    Args:
+        json_path (str): JSON 檔案的完整路徑
+        
+    Returns:
+        tuple: (步驟列表, 最大步數)
+    """
+    try:
+        json_path = get_resource_path(json_path)
+        with open(json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            
+        # 檢查是否存在 steps 鍵
+        if 'steps' not in data:
+            return [], 0
+            
+        # 獲取所有步驟並按順序排列
+        steps_dict = data['steps']
+        steps_array = []
+        max_steps = 0
+        
+        # 遍歷所有步驟（假設步驟是按 Step1, Step2 等順序命名）
+        i = 1
+        while f"Step{i}" in steps_dict:
+            steps_array.append(steps_dict[f"Step{i}"])
+            max_steps = i
+            i += 1
+            
+        return steps_array, max_steps
+        
+    except Exception as e:
+        print(f"讀取 JSON 檔案時發生錯誤: {str(e)}")
+        return [], 0
+
 def load_json_variables(file_path):
     '''
     從指定的 JSON 檔案中讀取變數並返回為字典。
@@ -215,12 +252,17 @@ def set_adb_connection(log_view, parent_widget):
             settings = json.load(f)
             saved_ip = settings.get('adb_ip_address')
 
-    try:
-        # 獲取當前所有連接的設備
+    def get_devices():
         devices_output = subprocess.check_output('adb devices', shell=True).decode('utf-8')
-        devices = [line.split()[0] for line in devices_output.splitlines() if 'device' in line]
+        # 過濾掉包含 "List" 的行，並只取有 "device" 的設備
+        return [line.split()[0] for line in devices_output.splitlines() 
+                if 'device' in line and 'List' not in line]
+
+    try:
+        # 第一次嘗試獲取設備
+        devices = get_devices()
         
-        # 如果沒有找到任何設備，嘗試連接常用端口
+        # 如果沒有找到任何設備，先嘗試常用端口
         if not devices:
             default_ports = ['5555', '16384', '7555', '21503', '62001']
             for port in default_ports:
@@ -235,26 +277,54 @@ def set_adb_connection(log_view, parent_widget):
                     continue
             
             # 重新獲取設備列表
-            devices_output = subprocess.check_output('adb devices', shell=True).decode('utf-8')
-            devices = [line.split()[0] for line in devices_output.splitlines() if 'device' in line]
+            devices = get_devices()
+
+        # 如果還是沒有設備，嘗試重啟 ADB 服務
+        if not devices:
+            log_view.append_log("未找到設備，正在重啟 ADB 服務...")
+            try:
+                # 關閉 ADB 服務
+                subprocess.run('adb kill-server', shell=True, check=True)
+                time.sleep(2)  # 等待服務完全關閉
+                # 啟動 ADB 服務
+                subprocess.run('adb start-server', shell=True, check=True)
+                time.sleep(2)  # 等待服務啟動
+                # 再次嘗試獲取設備
+                devices = get_devices()
+            except Exception as e:
+                log_view.append_log(f"重啟 ADB 服務時發生錯誤: {str(e)}")
 
         if not devices:
             log_view.append_log("未找到可用的 ADB 設備")
             return None
 
-        # 如果有已保存的 IP 且在可用設備列表中，將其放在列表最前面
+        # 如果有已保存的設備且在當前設備列表中，直接使用該設備
         if saved_ip and saved_ip in devices:
-            devices.remove(saved_ip)
-            devices.insert(0, saved_ip)
+            try:
+                # 嘗試連接保存的設備
+                output = subprocess.check_output(
+                    f'adb connect {saved_ip}', 
+                    shell=True, 
+                    stderr=subprocess.STDOUT,
+                    timeout=30
+                )
+                log_view.append_log(output.decode('utf-8'))
 
-        # 讓使用者選擇設備
+                if saved_ip in get_devices():
+                    log_view.append_log(f"成功連接到已保存的 ADB 設備: {saved_ip}")
+                    selected_device_id = saved_ip
+                    return saved_ip
+            except Exception as e:
+                log_view.append_log(f"連接已保存的 ADB 設備時發生錯誤: {str(e)}")
+
+        # 如果沒有已保存的設備或連接失敗，才讓使用者選擇
         text, ok = QInputDialog.getItem(
             parent_widget,
             "選擇 ADB 設備",
             "請選擇要連接的 ADB 設備：",
             devices,
-            0,  # 預設選擇第一項
-            False  # 不允許編輯，只能選擇已檢測到的設備
+            0,
+            False
         )
 
         if ok and text:
@@ -269,11 +339,11 @@ def set_adb_connection(log_view, parent_widget):
                 log_view.append_log(output.decode('utf-8'))
 
                 # 確認連接是否成功
-                if text in devices:
+                if text in get_devices():
                     log_view.append_log(f"成功連接到 ADB: {text}")
                     selected_device_id = text
 
-                    # 保存成功連接的設備到 setting.json
+                    # 保存新的設備到 setting.json
                     with open(setting_path, 'r', encoding='utf-8') as f:
                         settings = json.load(f)
                     settings['adb_ip_address'] = text

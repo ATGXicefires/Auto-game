@@ -1,10 +1,10 @@
-from PySide6.QtWidgets import QMainWindow, QTabWidget, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget, QLabel, QSlider, QLineEdit, QGraphicsView, QGraphicsScene
+from PySide6.QtWidgets import QMainWindow, QTabWidget, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget, QLabel, QSlider, QLineEdit, QGraphicsView, QGraphicsScene, QInputDialog
 from PySide6.QtGui import QFont, QPixmap, QPainter, QIntValidator
 from PySide6.QtCore import Qt, Signal, QThread
 from ui_logic import (
     handle_file_selection, 
     clear_json_file, 
-    clear_steps, 
+    clear_save_data, 
     process_set_button_click, 
     on_zoom_slider_change, 
     show_context_menu, 
@@ -18,13 +18,12 @@ from functions import (
     get_resource_path, 
     load_json_variables,
     get_max_step_value,
-    Click_step_by_step,
-    ADB_match_template,
     set_adb_connection,
-    ADB_Click_step_by_step
+    load_steps_from_json
 )
 from log_view import LogView
 from process_view import ProcessView
+from clicking_functions import Click_step_by_step, ADB_Click_step_by_step
 import os
 import json
 
@@ -45,6 +44,23 @@ class ClickWorker(QThread):
         else:
             Click_step_by_step(self.step_array, self.log_view)
         self.finished.emit()
+
+class ClickWorker2(QThread):
+    finished = Signal(bool, int)  # 修改信號，傳送成功狀態和當前步驟
+    
+    def __init__(self, step_array, log_view, is_adb_mode):
+        super().__init__()
+        self.step_array = step_array
+        self.log_view = log_view
+        self.is_adb_mode = is_adb_mode
+        
+    def run(self):
+        if self.is_adb_mode:
+            success, current_step = ADB_Click_step_by_step(self.step_array, self.log_view)
+        else:
+            success, current_step = Click_step_by_step(self.step_array, self.log_view)
+        
+        self.finished.emit(success, current_step)
 
 class MainWindow(QMainWindow):
     start_signal = Signal()  # 確保信號正確定義
@@ -129,12 +145,12 @@ class MainWindow(QMainWindow):
         clear_adb_button.clicked.connect(lambda: clear_adb_settings(self))
         left_layout.addWidget(clear_adb_button)
 
-        # 添加 "清除步驟" 按鈕
-        clear_steps_button = QPushButton("清除已設置步驟", self)
+        # 添加 "清理存檔" 按鈕
+        clear_steps_button = QPushButton("清理存檔", self)
         clear_steps_button.setFixedWidth(fixed_width)  # 設置按鈕寬度
         clear_steps_button.setFixedHeight(50)  # 設置按鈕高度
         clear_steps_button.setFont(QFont("Arial", 14))  # 設置字體大小
-        clear_steps_button.clicked.connect(lambda: clear_steps(self))
+        clear_steps_button.clicked.connect(lambda: clear_save_data(self))
         left_layout.addWidget(clear_steps_button)
 
         # 添加 "流程編輯" 按鈕
@@ -226,8 +242,8 @@ class MainWindow(QMainWindow):
     def clear_detect(self):
         clear_detect(self)
 
-    def clear_steps(self):
-        clear_steps(self)
+    def clear_save_data(self):
+        clear_save_data(self)
 
     def process_set_button_click(self):
         process_set_button_click(self)
@@ -255,6 +271,13 @@ class MainWindow(QMainWindow):
         # 保存當前模式到 setting.json
         self.save_mode_setting()
 
+    def handle_click_finished(self, success, current_step):
+        """處理點擊操作完成的回調"""
+        if success:
+            self.log_view.append_log(f"所有步驟執行完成！總共執行了 {current_step} 步")
+        else:
+            self.log_view.append_log(f"執行失敗，在第 {current_step} 步停止")
+
     def on_start_button_click(self):
         # 這裡是 Start_ON 的邏輯
         # 獲取當前模式
@@ -262,35 +285,62 @@ class MainWindow(QMainWindow):
         mode_text = "ADB" if self.is_adb_mode else "Windows"
         self.log_view.append_log(f"當前模式: {mode_text}")
 
-        # 使用 get_resource_path 來獲取 sv.json 的正確路徑
-        json_path = get_resource_path('SaveData/sv.json')
-        # 導入 sv.json 的變數
-        json_variables = load_json_variables(json_path)
-        max_step_value = 0
-        self.log_view.append_log("Start")
+        # 找出 SaveData 資料夾中所有的 json 檔案
+        save_path = get_resource_path('SaveData')
+        json_files = [f for f in os.listdir(save_path) if f.endswith('.json')]
         
-        # 最小化主窗口
-        #self.showMinimized()
-
-        # 找出 "Step[Y]" 的最大 Y 值
-        max_step_value = get_max_step_value(json_variables)
-        self.log_view.append_log(f"最大 Step[Y] 值: {max_step_value}")
-
-        # 將 Step[Y] 的內容值存入 step_array
-        self.step_array = []  # 將 step_array 存儲為實例變數
-        for i in range(1, max_step_value + 1):
-            step_key = f"Step[{i}]"
-            if step_key in json_variables:
-                self.step_array.append(json_variables[step_key])
+        if not json_files:
+            self.log_view.append_log("錯誤：找不到任何存檔檔案")
+            return
         
-        # 打印出 step_array 中的所有值
-        for index in range(max_step_value):
-            self.log_view.append_log(f"step_array[{index}]: {self.step_array[index]}")
+        # 讓使用者選擇要執行的存檔
+        item, ok = QInputDialog.getItem(
+            self,
+            "選擇存檔",
+            "請選擇要執行的存檔：",
+            json_files,
+            0,
+            False
+        )
+        
+        if not ok:
+            self.log_view.append_log("已取消執行")
+            return
 
-        # 創建並啟動 ClickWorker 執行緒
-        self.worker = ClickWorker(self.step_array, self.log_view, self.is_adb_mode)
-        self.worker.finished.connect(lambda: self.log_view.append_log("點擊操作完成"))
-        self.worker.start()
+        # 根據選擇的檔案執行相應的邏輯
+        if item == 'sv.json':
+            # 使用原本的邏輯執行 sv.json
+            json_path = os.path.join(save_path, item)
+            self.log_view.append_log(f"選擇執行存檔: {item}")
+            
+            json_variables = load_json_variables(json_path)
+            max_step_value = 0
+            self.log_view.append_log("Start")
+
+            max_step_value = get_max_step_value(json_variables)
+            self.log_view.append_log(f"最大 Step[Y] 值: {max_step_value}")
+
+            self.step_array = []
+            for i in range(1, max_step_value + 1):
+                step_key = f"Step[{i}]"
+                if step_key in json_variables:
+                    self.step_array.append(json_variables[step_key])
+            
+            for index in range(max_step_value):
+                self.log_view.append_log(f"step_array[{index}]: {self.step_array[index]}")
+
+            self.worker = ClickWorker(self.step_array, self.log_view, self.is_adb_mode)
+            self.worker.finished.connect(lambda: self.log_view.append_log("點擊操作完成"))
+            self.worker.start()
+        
+        else:
+            # 執行新格式的存檔
+            self.step_array, max_step_value = load_steps_from_json(os.path.join(save_path, item))
+            self.log_view.append_log(f"載入了 {max_step_value} 個步驟")
+            
+            self.worker = ClickWorker2(self.step_array, self.log_view, self.is_adb_mode)
+            self.worker.finished.connect(self.handle_click_finished)
+            self.worker.start()
 
     def display_image(self, item):
         display_image(self, item)
