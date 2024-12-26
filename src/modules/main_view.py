@@ -4,7 +4,7 @@ from PySide6.QtCore import Qt, Signal, QThread
 from ui_logic import (
     handle_file_selection, 
     clear_json_file, 
-    clear_steps, 
+    clear_save_data, 
     process_set_button_click, 
     on_zoom_slider_change, 
     show_context_menu, 
@@ -129,12 +129,12 @@ class MainWindow(QMainWindow):
         clear_adb_button.clicked.connect(lambda: clear_adb_settings(self))
         left_layout.addWidget(clear_adb_button)
 
-        # 添加 "清除步驟" 按鈕
-        clear_steps_button = QPushButton("清除已設置步驟", self)
+        # 添加 "清理存檔" 按鈕
+        clear_steps_button = QPushButton("清理存檔", self)
         clear_steps_button.setFixedWidth(fixed_width)  # 設置按鈕寬度
         clear_steps_button.setFixedHeight(50)  # 設置按鈕高度
         clear_steps_button.setFont(QFont("Arial", 14))  # 設置字體大小
-        clear_steps_button.clicked.connect(lambda: clear_steps(self))
+        clear_steps_button.clicked.connect(lambda: clear_save_data(self))
         left_layout.addWidget(clear_steps_button)
 
         # 添加 "流程編輯" 按鈕
@@ -226,8 +226,8 @@ class MainWindow(QMainWindow):
     def clear_detect(self):
         clear_detect(self)
 
-    def clear_steps(self):
-        clear_steps(self)
+    def clear_save_data(self):
+        clear_save_data(self)
 
     def process_set_button_click(self):
         process_set_button_click(self)
