@@ -1,1 +1,64 @@
-{}
+{
+    "D.png": {
+        "position": {
+            "x": 550.0,
+            "y": 181.0
+        },
+        "connections": [
+            {
+                "from": "E.png",
+                "to": "D.png"
+            }
+        ]
+    },
+    "C.png": {
+        "position": {
+            "x": 195.0,
+            "y": 286.0
+        },
+        "connections": [
+            {
+                "from": "D.png",
+                "to": "C.png"
+            }
+        ]
+    },
+    "B.png": {
+        "position": {
+            "x": 13.0,
+            "y": 107.0
+        },
+        "connections": [
+            {
+                "from": "C.png",
+                "to": "B.png"
+            }
+        ]
+    },
+    "A.png": {
+        "position": {
+            "x": -6.0,
+            "y": -145.0
+        },
+        "connections": [
+            {
+                "from": "B.png",
+                "to": "A.png"
+            }
+        ]
+    },
+    "E.png": {
+        "position": {
+            "x": 627.0,
+            "y": -102.0
+        },
+        "connections": []
+    },
+    "steps": {
+        "Step1": "detect\\A.png",
+        "Step2": "detect\\B.png",
+        "Step3": "detect\\C.png",
+        "Step4": "detect\\D.png",
+        "Step5": "detect\\E.png"
+    }
+}

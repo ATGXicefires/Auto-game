@@ -2,7 +2,7 @@ import sys
 import os
 import shutil
 import json
-from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QFileDialog, QListWidget, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QSlider, QMenu, QLineEdit, QMessageBox, QGraphicsView, QGraphicsScene, QStyle, QStyleOptionSlider, QGraphicsPixmapItem
+from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QFileDialog, QListWidget, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QSlider, QMenu, QLineEdit, QMessageBox, QGraphicsView, QGraphicsScene, QStyle, QStyleOptionSlider, QGraphicsPixmapItem, QDialog
 from PySide6.QtGui import QPixmap, QIntValidator, QPainter, QFont, QPen
 from PySide6.QtCore import Qt, Signal
 from functions import get_resource_path, load_json_variables, get_max_step_value, Click_step_by_step,adb_screenshot
@@ -207,35 +207,135 @@ def clear_detect(main_window):
             print(f"清理已上傳的圖片時發生錯誤：{str(e)}")
 
 def clear_save_data(main_window):
-    """清理存檔資料夾內的檔案，保留 sv.json 但重置其內容"""
+    """清理存檔資料夾內的檔案，讓使用者選擇要清除哪個存檔"""
     cache_path = get_resource_path('SaveData')
-    if os.path.exists(cache_path):
-        # 遍歷資料夾中的所有檔案並刪除，但保留 sv.json
+    if not os.path.exists(cache_path):
+        print("存檔資料夾不存在")
+        main_window.log_view.append_log("存檔資料夾不存在")
+        return
+
+    # 獲取所有存檔檔案列表
+    save_files = [f for f in os.listdir(cache_path) if f != 'sv.json']
+    
+    if not save_files:
+        msg = "存檔資料夾中沒有可清除的檔案"
+        print(msg)
+        main_window.log_view.append_log(msg)
+        return
+
+    # 創建選擇對話框
+    msg_box = QMessageBox(main_window)
+    msg_box.setWindowTitle("選擇要清除的存檔")
+    msg_box.setText("請選擇要清除的內容：")
+    
+    # 添加選項按鈕
+    all_button = msg_box.addButton("清除所有存檔", QMessageBox.ActionRole)
+    specific_button = msg_box.addButton("選擇特定存檔", QMessageBox.ActionRole)
+    sv_button = msg_box.addButton("只重置 sv.json", QMessageBox.ActionRole)
+    cancel_button = msg_box.addButton("取消", QMessageBox.RejectRole)
+    
+    msg_box.exec_()
+    clicked_button = msg_box.clickedButton()
+    
+    if clicked_button == cancel_button:
+        return
+    
+    elif clicked_button == specific_button:
+        # 創建自定義的選擇對話框
+        select_dialog = QDialog(main_window)
+        select_dialog.setWindowTitle("選擇要刪除的存檔")
+        select_dialog.setMinimumWidth(300)
+        
+        # 創建垂直布局
+        layout = QVBoxLayout()
+        
+        # 創建列表控件
+        list_widget = QListWidget()
+        # 獲取所有存檔檔案（排除 sv.json）
+        save_files = [f for f in os.listdir(cache_path) if f != 'sv.json']
+        list_widget.addItems(save_files)
+        layout.addWidget(list_widget)
+        
+        # 創建按鈕布局
+        button_layout = QHBoxLayout()
+        delete_button = QPushButton("刪除")
+        cancel_button = QPushButton("取消")
+        button_layout.addWidget(delete_button)
+        button_layout.addWidget(cancel_button)
+        layout.addLayout(button_layout)
+        
+        select_dialog.setLayout(layout)
+        
+        # 連接按鈕信號
+        delete_button.clicked.connect(select_dialog.accept)
+        cancel_button.clicked.connect(select_dialog.reject)
+        
+        if select_dialog.exec_() == QDialog.Accepted:
+            selected_items = list_widget.selectedItems()
+            for item in selected_items:
+                selected_file = item.text()
+                file_path = os.path.join(cache_path, selected_file)
+                try:
+                    if os.path.exists(file_path):
+                        if os.path.isfile(file_path):
+                            os.unlink(file_path)
+                        elif os.path.isdir(file_path):
+                            shutil.rmtree(file_path)
+                        msg = f"已刪除: {selected_file}"
+                        print(msg)
+                        main_window.log_view.append_log(msg)
+                except Exception as e:
+                    error_msg = f"刪除 {selected_file} 時發生錯誤: {e}"
+                    print(error_msg)
+                    main_window.log_view.append_log(error_msg)
+    
+    elif clicked_button == sv_button:
+        # 只重置 sv.json
+        sv_path = os.path.join(cache_path, 'sv.json')
+        try:
+            with open(sv_path, 'w', encoding='utf-8') as f:
+                f.write('{}')
+            msg = "已重置 sv.json 內容"
+            print(msg)
+            main_window.log_view.append_log(msg)
+        except Exception as e:
+            error_msg = f"重置 sv.json 時發生錯誤: {e}"
+            print(error_msg)
+            main_window.log_view.append_log(error_msg)
+    
+    elif clicked_button == all_button:
+        # 清除所有存檔
         for filename in os.listdir(cache_path):
-            # 如果是 sv.json，重置其內容為 {}
             if filename == 'sv.json':
+                # 重置 sv.json
                 sv_path = os.path.join(cache_path, filename)
                 try:
                     with open(sv_path, 'w', encoding='utf-8') as f:
                         f.write('{}')
-                    print(f"已重置 sv.json 內容")
-                    continue
+                    print("已重置 sv.json 內容")
+                    main_window.log_view.append_log("已重置 sv.json 內容")
                 except Exception as e:
-                    print(f"重置 sv.json 時發生錯誤: {e}")
-                    continue
-                
+                    error_msg = f"重置 sv.json 時發生錯誤: {e}"
+                    print(error_msg)
+                    main_window.log_view.append_log(error_msg)
+                continue
+            
             file_path = os.path.join(cache_path, filename)
             try:
                 if os.path.isfile(file_path):
                     os.unlink(file_path)
                 elif os.path.isdir(file_path):
                     shutil.rmtree(file_path)
+                print(f"已刪除: {filename}")
+                main_window.log_view.append_log(f"已刪除: {filename}")
             except Exception as e:
-                print(f"刪除檔案時發生錯誤: {e}")
-                continue
+                error_msg = f"刪除 {filename} 時發生錯誤: {e}"
+                print(error_msg)
+                main_window.log_view.append_log(error_msg)
         
-        print(f"已清除存檔資料夾內容並重置 sv.json: {cache_path}")
-        main_window.log_view.append_log("已清除存檔資料夾內容並重置 sv.json")
+        msg = f"已清除存檔資料夾內容並重置 sv.json: {cache_path}"
+        print(msg)
+        main_window.log_view.append_log(msg)
 
 def process_set_button_click(main_window):
     """切換到流程視圖頁籤"""
