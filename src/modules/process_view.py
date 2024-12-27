@@ -6,7 +6,8 @@ import time
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QLabel, QGraphicsView, QGraphicsScene,
     QMenu, QGraphicsLineItem, QGraphicsPixmapItem, QGraphicsPolygonItem,
-    QListWidget, QPushButton, QMessageBox, QInputDialog, QLineEdit
+    QListWidget, QPushButton, QMessageBox, QInputDialog, QLineEdit, QDialog,
+    QDialogButtonBox, QSpinBox
 )
 from PySide6.QtGui import (
     QPixmap, QDragEnterEvent, QDropEvent, QFont, QWheelEvent,
@@ -273,10 +274,99 @@ class ProcessView(QWidget):
 
     def show_click_settings(self, item: PixmapNode):
         """顯示點擊設定"""
-        msg = QMessageBox(self)
-        msg.setWindowTitle("點擊設定")
-        msg.setText("只接受使用左鍵點擊 :>")
-        msg.exec_()
+        dialog = QDialog(self)
+        dialog.setWindowTitle("點擊設定")
+        layout = QVBoxLayout()
+        
+        # 超時設定
+        timeout_layout = QHBoxLayout()
+        timeout_label = QLabel("等待超時（秒）：")
+        timeout_spinbox = QSpinBox()
+        timeout_spinbox.setRange(1, 60)
+        timeout_spinbox.setValue(item.timeout if hasattr(item, 'timeout') else 30)
+        timeout_layout.addWidget(timeout_label)
+        timeout_layout.addWidget(timeout_spinbox)
+        
+        # 確認按鈕
+        button_box = QDialogButtonBox(
+            QDialogButtonBox.Ok | QDialogButtonBox.Cancel
+        )
+        button_box.accepted.connect(dialog.accept)
+        button_box.rejected.connect(dialog.reject)
+        
+        layout.addLayout(timeout_layout)
+        layout.addWidget(button_box)
+        dialog.setLayout(layout)
+        
+        if dialog.exec_() == QDialog.Accepted:
+            item.timeout = timeout_spinbox.value()
+            
+            # 更新 JSON 檔案中的 timeout 設定
+            try:
+                # 找出所有可能的 JSON 檔案
+                save_data_path = get_resource_path('SaveData')
+                json_files = [f for f in os.listdir(save_data_path) if f.endswith('.json')]
+                
+                if not json_files:
+                    self.update_status("找不到任何 JSON 檔案")
+                    return
+                    
+                # 如果有多個檔案，讓使用者選擇
+                if len(json_files) > 1:
+                    file_name, ok = QInputDialog.getItem(
+                        self,
+                        "選擇檔案",
+                        "請選擇要更新的檔案：",
+                        json_files,
+                        0,
+                        False
+                    )
+                    if not ok:
+                        return
+                else:
+                    file_name = json_files[0]
+                
+                json_path = os.path.join(save_data_path, file_name)
+                
+                # 讀取 JSON 檔案
+                with open(json_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                
+                # 取得目標檔案名稱
+                target_file = os.path.basename(item.file_path)
+                
+                # 在 steps 中找到對應的步驟並更新 timeout
+                if 'steps' in data:
+                    updated = False
+                    for step_key, step_data in data['steps'].items():
+                        if isinstance(step_data, dict):
+                            # 檢查是否為當前節點
+                            if step_data.get('location', '').endswith(target_file):
+                                step_data['timeout'] = item.timeout
+                                updated = True
+                        elif isinstance(step_data, str):
+                            # 如果是舊格式，轉換為新格式
+                            if step_data.endswith(target_file):
+                                data['steps'][step_key] = {
+                                    'location': step_data,
+                                    'timeout': item.timeout
+                                }
+                                updated = True
+                    
+                    if not updated:
+                        self.update_status(f"在 JSON 中找不到對應的節點：{target_file}")
+                        return
+                    
+                    # 保存更新後的 JSON
+                    with open(json_path, 'w', encoding='utf-8') as f:
+                        json.dump(data, f, indent=4, ensure_ascii=False)
+                    
+                    self.update_status(f"已更新節點 {target_file} 的超時設定為 {item.timeout} 秒")
+                else:
+                    self.update_status("JSON 檔案中找不到 steps 欄位")
+                
+            except Exception as e:
+                self.update_status(f"更新超時設定時發生錯誤：{str(e)}")
 
     def show_detail_settings(self, item: PixmapNode):
         """顯示圖片詳細資料"""
@@ -846,12 +936,17 @@ class ProcessView(QWidget):
                     break
             
             if complete_path:
-                # 將步驟資訊加入到 JSON 中，使用 get_resource_path 確保打包後路徑正確
+                # 將步驟資訊加入到 JSON 中，使用新的格式包含 timeout
                 steps = {}
                 for i, node in enumerate(complete_path):
                     # 使用 get_resource_path 取得相對於資源目錄的路徑
                     relative_path = os.path.join('detect', node)  # 先組合路徑
-                    steps[f"Step{i+1}"] = relative_path
+                    
+                    # 使用新的格式，包含 location 和 timeout
+                    steps[f"Step{i+1}"] = {
+                        "location": relative_path,
+                        "timeout": 30  # 預設 timeout 為 30 秒
+                    }
                 
                 data['steps'] = steps
                 

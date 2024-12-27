@@ -55,10 +55,25 @@
         ]
     },
     "steps": {
-        "Step1": "detect\\A.png",
-        "Step2": "detect\\B.png",
-        "Step3": "detect\\C.png",
-        "Step4": "detect\\D.png",
-        "Step5": "detect\\E.png"
+        "Step1": {
+            "location": "detect\\A.png",
+            "timeout": 5
+        },
+        "Step2": {
+            "location": "detect\\B.png",
+            "timeout": 30
+        },
+        "Step3": {
+            "location": "detect\\C.png",
+            "timeout": 30
+        },
+        "Step4": {
+            "location": "detect\\D.png",
+            "timeout": 30
+        },
+        "Step5": {
+            "location": "detect\\E.png",
+            "timeout": 30
+        }
     }
 }

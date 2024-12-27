@@ -105,34 +105,43 @@ def load_steps_from_json(json_path):
         json_path (str): JSON 檔案的完整路徑
         
     Returns:
-        tuple: (步驟列表, 最大步數)
+        list: 包含所有步驟資訊的列表，每個步驟包含圖片位置和超時設定
     """
     try:
-        json_path = get_resource_path(json_path)
         with open(json_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
             
-        # 檢查是否存在 steps 鍵
         if 'steps' not in data:
-            return [], 0
+            return []
             
-        # 獲取所有步驟並按順序排列
         steps_dict = data['steps']
         steps_array = []
-        max_steps = 0
         
-        # 遍歷所有步驟（假設步驟是按 Step1, Step2 等順序命名）
         i = 1
         while f"Step{i}" in steps_dict:
-            steps_array.append(steps_dict[f"Step{i}"])
-            max_steps = i
+            step_data = steps_dict[f"Step{i}"]
+            
+            # 處理新舊格式相容性
+            if isinstance(step_data, str):
+                # 舊格式：直接是圖片路徑字串
+                steps_array.append({
+                    'location': step_data,
+                    'timeout': 30  # 預設超時時間
+                })
+            else:
+                # 新格式：包含 location 和 timeout
+                steps_array.append({
+                    'location': step_data.get('location', ''),
+                    'timeout': step_data.get('timeout', 30)  # 如果沒有設定，預設為 30 秒
+                })
+            
             i += 1
             
-        return steps_array, max_steps
+        return steps_array
         
     except Exception as e:
         print(f"讀取 JSON 檔案時發生錯誤: {str(e)}")
-        return [], 0
+        return []
 
 def load_json_variables(file_path):
     '''
@@ -497,7 +506,7 @@ def ensure_save_data_directory():
 
 def configure_adb(log_view=None):
     # 使用 get_resource_path 獲取 ADB 工具的絕對路徑
-    adb_path = get_resource_path("./ADB/platform-tools")
+    adb_path = get_resource_path("ADB/platform-tools/")
     
     # 添加到環境變數
     os.environ["PATH"] += os.pathsep + adb_path

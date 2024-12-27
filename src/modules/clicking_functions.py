@@ -32,7 +32,20 @@ def load_steps_from_json(json_path):
         
         i = 1
         while f"Step{i}" in steps_dict:
-            steps_array.append(steps_dict[f"Step{i}"])
+            step_data = steps_dict[f"Step{i}"]
+            
+            # 處理新舊格式相容性
+            if isinstance(step_data, str):
+                steps_array.append({
+                    'location': step_data,
+                    'timeout': 30
+                })
+            else:
+                steps_array.append({
+                    'location': step_data.get('location', ''),
+                    'timeout': step_data.get('timeout', 30)
+                })
+                
             max_steps = i
             i += 1
             
@@ -109,6 +122,7 @@ def detect_and_click_image(template_path, log_view, confidence=0.9, timeout=30, 
             return None
 
     start_time = time.time()
+    log_view.append_log(f"開始尋找圖片，超時時間設定為 {timeout} 秒")
 
     while time.time() - start_time < timeout:
         if is_adb_mode:
@@ -150,10 +164,10 @@ def detect_and_click_image(template_path, log_view, confidence=0.9, timeout=30, 
 
             return (center_x, center_y)
 
-        log_view.append_log(f"當前匹配準確值：{max_val}")
+        log_view.append_log(f"當前匹配準確值：{max_val}，剩餘時間：{int(timeout - (time.time() - start_time))}秒")
         time.sleep(1)
 
-    log_view.append_log("未找到匹配的影像")
+    log_view.append_log(f"超過設定的 {timeout} 秒仍未找到匹配的影像")
     return None
 
 def Click_step_by_step(step_array, log_view):
@@ -165,12 +179,19 @@ def Click_step_by_step(step_array, log_view):
     """
     total_steps = len(step_array)
     for current_step, step in enumerate(step_array, 1):
-        template_path = get_resource_path(step)
-        log_view.append_log(f"正在執行第 {current_step}/{total_steps} 步: {step}")
-        result = detect_and_click_image(template_path, log_view, is_adb_mode=False)
+        template_path = get_resource_path(step['location'])
+        timeout = step['timeout']  # 使用步驟特定的 timeout 設定
+        log_view.append_log(f"正在執行第 {current_step}/{total_steps} 步: {step['location']} (超時設定: {timeout}秒)")
+        
+        result = detect_and_click_image(
+            template_path, 
+            log_view, 
+            timeout=timeout,  # 傳遞 timeout 設定
+            is_adb_mode=False
+        )
         
         if result is None:
-            log_view.append_log(f"步驟 {current_step} 失敗: 無法找到或點擊 {step}")
+            log_view.append_log(f"步驟 {current_step} 失敗: 無法找到或點擊 {step['location']}")
             return False, current_step
             
         log_view.append_log(f"步驟 {current_step} 完成")
@@ -187,12 +208,19 @@ def ADB_Click_step_by_step(step_array, log_view):
     """
     total_steps = len(step_array)
     for current_step, step in enumerate(step_array, 1):
-        template_path = get_resource_path(step)
-        log_view.append_log(f"正在執行第 {current_step}/{total_steps} 步: {step}")
-        result = detect_and_click_image(template_path, log_view, is_adb_mode=True)
+        template_path = get_resource_path(step['location'])
+        timeout = step['timeout']  # 使用步驟特定的 timeout 設定
+        log_view.append_log(f"正在執行第 {current_step}/{total_steps} 步: {step['location']} (超時設定: {timeout}秒)")
+        
+        result = detect_and_click_image(
+            template_path, 
+            log_view, 
+            timeout=timeout,  # 傳遞 timeout 設定
+            is_adb_mode=True
+        )
         
         if result is None:
-            log_view.append_log(f"步驟 {current_step} 失敗: 無法找到或點擊 {step}")
+            log_view.append_log(f"步驟 {current_step} 失敗: 無法找到或點擊 {step['location']}")
             return False, current_step
             
         log_view.append_log(f"步驟 {current_step} 完成")
