@@ -807,31 +807,43 @@ class ProcessView(QWidget):
             
             # 第一步：建立所有節點
             for file_name, data in connections_data.items():
-                file_path = os.path.join(detect_folder, file_name)
-                if os.path.exists(file_path):
-                    # 創建新的 PixmapNode
-                    pixmap = QPixmap(file_path)
-                    if not pixmap.isNull():
-                        node = PixmapNode(pixmap, file_path)
-                        node.setFlag(QGraphicsPixmapItem.ItemIsMovable, not self.is_connection_mode)
-                        node.setFlag(QGraphicsPixmapItem.ItemIsSelectable, True)
-                        self.graphics_scene.addItem(node)
-                        
-                        # 設置位置
-                        if 'position' in data:
-                            pos = data['position']
-                            node.setPos(pos['x'], pos['y'])
-                        
-                        node_map[file_name] = node
-                        
-                        # 確保列表中有此圖片
-                        items = self.list_widget.findItems(file_name, Qt.MatchExactly)
-                        if not items:
-                            self.list_widget.addItem(file_name)
+                if file_name != 'steps':  # 跳過 steps 欄位
+                    file_path = os.path.join(detect_folder, file_name)
+                    if os.path.exists(file_path):
+                        # 創建新的 PixmapNode
+                        pixmap = QPixmap(file_path)
+                        if not pixmap.isNull():
+                            node = PixmapNode(pixmap, file_path)
+                            node.setFlag(QGraphicsPixmapItem.ItemIsMovable, not self.is_connection_mode)
+                            node.setFlag(QGraphicsPixmapItem.ItemIsSelectable, True)
+                            self.graphics_scene.addItem(node)
+                            
+                            # 設置位置
+                            if 'position' in data:
+                                pos = data['position']
+                                node.setPos(pos['x'], pos['y'])
+                            
+                            # 從 steps 中載入時限設定
+                            if 'steps' in connections_data:
+                                for step_data in connections_data['steps'].values():
+                                    if isinstance(step_data, dict):
+                                        if step_data.get('location', '').endswith(file_name):
+                                            node.timeout = step_data.get('timeout', 30)
+                                            break
+                                    elif isinstance(step_data, str) and step_data.endswith(file_name):
+                                        node.timeout = 30  # 舊格式預設 30 秒
+                                        break
+                            
+                            node_map[file_name] = node
+                            
+                            # 確保列表中有此圖片
+                            items = self.list_widget.findItems(file_name, Qt.MatchExactly)
+                            if not items:
+                                self.list_widget.addItem(file_name)
             
             # 第二步：建立連線
             for file_name, data in connections_data.items():
-                if file_name in node_map:
+                if file_name != 'steps' and file_name in node_map:  # 跳過 steps 欄位
                     for conn in data.get('connections', []):
                         from_file = conn['from']
                         to_file = conn['to']
