@@ -389,6 +389,9 @@ class ProcessView(QWidget):
         outgoing_connections = sum(1 for conn in item.connections if conn[2])  # 有箭頭的連線
         incoming_connections = sum(1 for conn in item.connections if not conn[2])  # 無箭頭的連線
         
+        # 取得時限資訊
+        timeout = getattr(item, 'timeout', 30)  # 如果沒有設定，預設為 30 秒
+        
         # 建立詳細資訊文字
         detail_text = (
             f"檔案名稱：{file_name}\n"
@@ -398,6 +401,8 @@ class ProcessView(QWidget):
             f"\n"
             f"圖片尺寸：{width} x {height}\n"
             f"場景位置：({pos.x():.2f}, {pos.y():.2f})\n"
+            f"\n"
+            f"等待時限：{timeout} 秒\n"
             f"\n"
             f"連線資訊：\n"
             f"  ➤ 輸出連線：{outgoing_connections}\n"
