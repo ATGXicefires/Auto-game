@@ -282,7 +282,7 @@ class ProcessView(QWidget):
         timeout_layout = QHBoxLayout()
         timeout_label = QLabel("等待超時（秒）：")
         timeout_spinbox = QSpinBox()
-        timeout_spinbox.setRange(1, 60)
+        timeout_spinbox.setRange(1, 16777216)
         timeout_spinbox.setValue(item.timeout if hasattr(item, 'timeout') else 30)
         timeout_layout.addWidget(timeout_label)
         timeout_layout.addWidget(timeout_spinbox)

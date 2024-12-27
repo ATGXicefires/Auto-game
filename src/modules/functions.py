@@ -99,49 +99,52 @@ def get_resource_path(relative_path):
 
 def load_steps_from_json(json_path):
     """
-    從指定的 JSON 檔案讀取步驟資訊
-    
-    Args:
-        json_path (str): JSON 檔案的完整路徑
-        
-    Returns:
-        list: 包含所有步驟資訊的列表，每個步驟包含圖片位置和超時設定
+    從 JSON 檔案載入步驟資訊
+    返回: (step_array, max_step_value)
     """
     try:
         with open(json_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
             
         if 'steps' not in data:
-            return []
+            return [], 0
             
-        steps_dict = data['steps']
-        steps_array = []
+        # 取得所有步驟
+        steps = data['steps']
+        step_array = []
+        max_step = 0
         
-        i = 1
-        while f"Step{i}" in steps_dict:
-            step_data = steps_dict[f"Step{i}"]
-            
-            # 處理新舊格式相容性
-            if isinstance(step_data, str):
-                # 舊格式：直接是圖片路徑字串
-                steps_array.append({
-                    'location': step_data,
-                    'timeout': 30  # 預設超時時間
+        # 遍歷步驟
+        for step_key, step_data in steps.items():
+            # 從步驟名稱中提取數字（例如 "Step1" -> 1）
+            try:
+                step_num = int(''.join(filter(str.isdigit, step_key)))
+                max_step = max(max_step, step_num)
+                
+                # 處理新舊格式
+                if isinstance(step_data, dict):
+                    location = step_data['location']
+                    timeout = step_data.get('timeout', 30)
+                else:
+                    location = step_data
+                    timeout = 30
+                    
+                step_array.append({
+                    'step': step_num,
+                    'location': location,
+                    'timeout': timeout
                 })
-            else:
-                # 新格式：包含 location 和 timeout
-                steps_array.append({
-                    'location': step_data.get('location', ''),
-                    'timeout': step_data.get('timeout', 30)  # 如果沒有設定，預設為 30 秒
-                })
-            
-            i += 1
-            
-        return steps_array
+            except ValueError:
+                continue
+                
+        # 按步驟順序排序
+        step_array.sort(key=lambda x: x['step'])
+        
+        return step_array, max_step
         
     except Exception as e:
-        print(f"讀取 JSON 檔案時發生錯誤: {str(e)}")
-        return []
+        print(f"載入步驟時發生錯誤：{str(e)}")
+        return [], 0
 
 def load_json_variables(file_path):
     '''
