@@ -3,7 +3,18 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QThread, Signal
 from PySide6.QtGui import QPalette, QColor, Qt
 from main_view import MainWindow
-from functions import ensure_cache_directory, ensure_sv_json, ensure_detect_directory, clear_sv_json, Click_step_by_step, ADB_Click_step_by_step, initialize_setting_file, initialize_connections_file, ensure_save_data_directory
+from functions import (
+    ensure_cache_directory, 
+    ensure_sv_json, 
+    ensure_detect_directory, 
+    clear_sv_json, 
+    Click_step_by_step, 
+    ADB_Click_step_by_step, 
+    initialize_setting_file,
+    initialize_connections_file, 
+    ensure_save_data_directory, 
+    configure_adb,
+)
 
 class Worker(QThread):
     finished = Signal()
@@ -31,6 +42,7 @@ if __name__ == "__main__":
     initialize_connections_file()
     ensure_sv_json()
     clear_sv_json()
+    configure_adb()
     # 創建 QApplication 實例
     app = QApplication(sys.argv)
     # 1. 設定 Fusion 風格

@@ -494,3 +494,25 @@ def ensure_save_data_directory():
     if not os.path.exists(save_data_path):
         os.makedirs(save_data_path)
         print(f"建立 SaveData 目錄: {save_data_path}")
+
+def configure_adb(log_view=None):
+    # 使用 get_resource_path 獲取 ADB 工具的絕對路徑
+    adb_path = get_resource_path("./ADB/platform-tools")
+    
+    # 添加到環境變數
+    os.environ["PATH"] += os.pathsep + adb_path
+    
+    # 驗證 ADB 是否正確配置
+    try:
+        result = subprocess.run(["adb", "version"], capture_output=True, text=True, check=True)
+        print("ADB 環境變數配置成功")
+        print(result.stdout)
+        if log_view:
+            log_view.append_log("ADB 環境變數配置成功")
+            log_view.append_log(result.stdout)
+    except subprocess.CalledProcessError as e:
+        print("配置 ADB 失敗，請檢查檔案路徑")
+        print(e)
+        if log_view:
+            log_view.append_log("配置 ADB 失敗，請檢查檔案路徑")
+            log_view.append_log(str(e))
