@@ -1,0 +1,95 @@
+{
+    "Screenshot_2024.12.28_23.46.07.295.png": {
+        "position": {
+            "x": 108.0,
+            "y": -136.0
+        },
+        "connections": [
+            {
+                "from": "Screenshot_2024.12.28_23.47.06.695.png",
+                "to": "Screenshot_2024.12.28_23.46.07.295.png"
+            }
+        ]
+    },
+    "Screenshot_2024.12.28_23.47.06.695.png": {
+        "position": {
+            "x": 98.0,
+            "y": 48.0
+        },
+        "connections": [
+            {
+                "from": "Screenshot_2024.12.28_23.51.54.561.png",
+                "to": "Screenshot_2024.12.28_23.47.06.695.png"
+            }
+        ]
+    },
+    "Screenshot_2024.12.28_23.51.54.561.png": {
+        "position": {
+            "x": 46.0,
+            "y": 165.0
+        },
+        "connections": [
+            {
+                "from": "Screenshot_2024.12.28_23.52.36.928.png",
+                "to": "Screenshot_2024.12.28_23.51.54.561.png"
+            }
+        ]
+    },
+    "Screenshot_2024.12.28_23.52.36.928.png": {
+        "position": {
+            "x": -305.0,
+            "y": 160.0
+        },
+        "connections": [
+            {
+                "from": "Screenshot_2024.12.28_23.53.00.978.png",
+                "to": "Screenshot_2024.12.28_23.52.36.928.png"
+            }
+        ]
+    },
+    "Screenshot_2024.12.28_23.53.00.978.png": {
+        "position": {
+            "x": -370.0,
+            "y": 8.0
+        },
+        "connections": [
+            {
+                "from": "Screenshot_2024.12.28_23.53.34.478.png",
+                "to": "Screenshot_2024.12.28_23.53.00.978.png"
+            }
+        ]
+    },
+    "Screenshot_2024.12.28_23.53.34.478.png": {
+        "position": {
+            "x": -407.0,
+            "y": -217.0
+        },
+        "connections": []
+    },
+    "steps": {
+        "Step1": {
+            "location": "detect\\Screenshot_2024.12.28_23.46.07.295.png",
+            "timeout": 30
+        },
+        "Step2": {
+            "location": "detect\\Screenshot_2024.12.28_23.47.06.695.png",
+            "timeout": 30
+        },
+        "Step3": {
+            "location": "detect\\Screenshot_2024.12.28_23.51.54.561.png",
+            "timeout": 30
+        },
+        "Step4": {
+            "location": "detect\\Screenshot_2024.12.28_23.52.36.928.png",
+            "timeout": 30
+        },
+        "Step5": {
+            "location": "detect\\Screenshot_2024.12.28_23.53.00.978.png",
+            "timeout": 30
+        },
+        "Step6": {
+            "location": "detect\\Screenshot_2024.12.28_23.53.34.478.png",
+            "timeout": 30
+        }
+    }
+}

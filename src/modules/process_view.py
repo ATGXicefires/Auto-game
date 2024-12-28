@@ -132,7 +132,10 @@ class PixmapNode(QGraphicsPixmapItem):
 class ProcessView(QWidget):
     def __init__(self, parent=None, log_view=None):
         super(ProcessView, self).__init__(parent)
-        self.log_view = log_view
+        self.log_view = None
+        if hasattr(parent, 'log_view'):
+            self.log_view = parent.log_view
+        
         self.setAcceptDrops(True)  # 啟用拖放功能
         
         # 整體使用水平佈局，左側為圖片列表，右側為原本場景與標籤
@@ -761,8 +764,7 @@ class ProcessView(QWidget):
         with open(json_path, 'w', encoding='utf-8') as f:
             json.dump(connections_data, f, ensure_ascii=False, indent=4)
         
-        self.label.setText("已保存")  # 簡短狀態在 label
-        self.log_view.append_log(f"已保存連線關係和位置到: {os.path.basename(json_path)}")  # 詳細訊息在 log
+        self.update_status(f"已保存連線關係和位置到: {os.path.basename(json_path)}")
         
         # 儲存完連線後，分析並儲存步驟順序，傳入實際使用的 json_path
         self.analyze_and_save_steps(json_path)
@@ -980,10 +982,10 @@ class ProcessView(QWidget):
             self.update_status(f"分析步驟時發生錯誤：{str(e)}")
 
     def update_status(self, message):
-        """更新狀態訊息，同時顯示在 label 和 log 視圖中"""
-        self.label.setText(message)
-        if hasattr(self, 'log_view') and self.log_view:
-            self.log_view.append_log(message)
+        """更新狀態訊息"""
+        self.label.setText("已更新")  # 簡短狀態
+        if self.log_view:  # 檢查 log_view 是否存在
+            self.log_view.append_log(message)  # 詳細訊息寫入 log
 
 class CustomGraphicsView(QGraphicsView):
     def __init__(self, parent=None):
