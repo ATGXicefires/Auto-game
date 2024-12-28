@@ -1,5 +1,5 @@
-from PySide6.QtWidgets import (QFileDialog, QHBoxLayout, QPushButton
-                               )
+from PySide6.QtWidgets import (QFileDialog, QHBoxLayout, QPushButton,
+                               QWidget, QVBoxLayout)
 
 class file_operations:
     def open_file_dialog(parent=None, caption="选择文件", filter="All Files (*.*)"):
@@ -26,3 +26,16 @@ class file_operations:
             button.clicked.connect(callback)
             button_list.append(button)
         return button_list
+
+    def create_widget_with_custom_layout(elements, layout):
+        """
+        创建一个带有自定义布局的 QWidget
+        :param elements: 需要添加到布局的元素列表
+        :param layout: 自定义布局 (例如 QVBoxLayout、QHBoxLayout、QGridLayout)
+        :return: 带有布局和元素的 QWidget
+        """
+        widget = QWidget()
+        for element in elements:
+            layout.addWidget(element)
+        widget.setLayout(layout)
+        return widget
