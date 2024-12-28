@@ -1,5 +1,6 @@
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QPlainTextEdit, 
-                               QGraphicsView, QGraphicsScene, QGraphicsRectItem, QFileDialog,
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
+                               QPlainTextEdit, QGraphicsView, QGraphicsScene,
+                               QGraphicsRectItem, QFileDialog,
                                QGraphicsPixmapItem, QMenu, QGraphicsLineItem)
 from PySide6.QtGui import QPainter, QColor, QPixmap, QPen, QMouseEvent
 from PySide6.QtCore import Qt
@@ -22,8 +23,8 @@ class View2(QWidget):
 
         left_layout.addWidget(self.file_button)
         left_layout.addWidget(self.path_display)
-        
-        
+
+
         # 添加自定義畫布視圖
         self.canvas_view = CanvasView()
         layout.addWidget(self.canvas_view, 3)  # 画布占 3/4
@@ -31,7 +32,7 @@ class View2(QWidget):
 
         # 将布局添加到主窗口
         main_layout.addLayout(layout)
-        
+
 
     def open_file_dialog(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "選擇文件")
@@ -218,6 +219,6 @@ class CanvasView(QGraphicsView):
                item.setPen(pen)
 
 
-            
+
     # 添加以下代碼以適應視窗範圍
     #self.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)

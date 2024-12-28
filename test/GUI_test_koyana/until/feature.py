@@ -13,16 +13,16 @@ class file_operations:
         """
         file_path, _ = QFileDialog.getOpenFileName(parent, caption, filter)
         return file_path
-    
+
     def save_file_dialog(parent=None, caption="保存文件", filter="All Files (*.*)"):
         file_path, _ = QFileDialog.getSaveFileName(parent, caption, filter)
         return file_path
 
-    def create_button_layout(buttons):
-        """生成按钮的水平布局"""
-        layout = QHBoxLayout()
+    def create_button(buttons):
+        """生成按钮"""
+        button_list = []
         for button_text, callback in buttons:
             button = QPushButton(button_text)
             button.clicked.connect(callback)
-            layout.addWidget(button)
-        return layout
+            button_list.append(button)
+        return button_list
