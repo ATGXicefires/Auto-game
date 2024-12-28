@@ -761,7 +761,8 @@ class ProcessView(QWidget):
         with open(json_path, 'w', encoding='utf-8') as f:
             json.dump(connections_data, f, ensure_ascii=False, indent=4)
         
-        self.update_status(f"已保存連線關係和位置到: {os.path.basename(json_path)}")
+        self.label.setText("已保存")  # 簡短狀態在 label
+        self.log_view.append_log(f"已保存連線關係和位置到: {os.path.basename(json_path)}")  # 詳細訊息在 log
         
         # 儲存完連線後，分析並儲存步驟順序，傳入實際使用的 json_path
         self.analyze_and_save_steps(json_path)
