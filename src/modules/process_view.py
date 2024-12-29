@@ -604,38 +604,74 @@ class ProcessView(QWidget):
 
     def handle_image_drop(self, file_path):
         """改進的圖片處理函式"""
-        detect_folder = get_resource_path('detect')
-        if not os.path.exists(detect_folder):
-            os.makedirs(detect_folder)
+        try:
+            detect_folder = get_resource_path('detect')
+            if not os.path.exists(detect_folder):
+                try:
+                    os.makedirs(detect_folder)
+                except Exception as e:
+                    self.label.setText("建立資料夾失敗")
+                    if self.log_view:
+                        self.log_view.append_log(f"無法建立 detect 資料夾: {str(e)}")
+                    return
 
-        file_name = os.path.basename(file_path)
-        destination_path = os.path.join(detect_folder, file_name)
-        
-        # 如果是新檔案才複製
-        if not os.path.exists(destination_path):
-            shutil.copy(file_path, destination_path)
+            file_name = os.path.basename(file_path)
+            destination_path = os.path.join(detect_folder, file_name)
+            
+            # 如果是新檔案才複製
+            if not os.path.exists(destination_path):
+                try:
+                    # 使用 win32file 或基本的檔案操作來複製
+                    with open(file_path, 'rb') as src_file:
+                        content = src_file.read()
+                        with open(destination_path, 'wb') as dst_file:
+                            dst_file.write(content)
+                except Exception as e:
+                    self.label.setText("複製失敗")
+                    if self.log_view:
+                        self.log_view.append_log(f"複製檔案失敗 ({file_path} -> {destination_path}): {str(e)}")
+                        self.log_view.append_log(f"來源檔案存在: {os.path.exists(file_path)}")
+                        self.log_view.append_log(f"目標資料夾存在: {os.path.exists(detect_folder)}")
+                        self.log_view.append_log(f"目標資料夾權限: {oct(os.stat(detect_folder).st_mode)[-3:]}")
+                    return
 
-        pixmap = QPixmap(destination_path)
-        if pixmap.isNull():
-            return
+            try:
+                pixmap = QPixmap(destination_path)
+                if pixmap.isNull():
+                    self.label.setText("載入失敗")
+                    if self.log_view:
+                        self.log_view.append_log(f"無法載入圖片: {destination_path}")
+                    return
 
-        # 建立 PixmapNode 時傳入檔案路徑
-        pixmap_node = PixmapNode(pixmap, destination_path)
-        pixmap_node.setFlag(QGraphicsPixmapItem.ItemIsMovable, not self.is_connection_mode)
-        pixmap_node.setFlag(QGraphicsPixmapItem.ItemIsSelectable, True)
-        self.graphics_scene.addItem(pixmap_node)
+                # 建立 PixmapNode 時傳入檔案路徑
+                pixmap_node = PixmapNode(pixmap, destination_path)
+                pixmap_node.setFlag(QGraphicsPixmapItem.ItemIsMovable, not self.is_connection_mode)
+                pixmap_node.setFlag(QGraphicsPixmapItem.ItemIsSelectable, True)
+                self.graphics_scene.addItem(pixmap_node)
 
-        # 檢查列表中是否已有此檔名，沒有才添加
-        items = self.list_widget.findItems(file_name, Qt.MatchExactly)
-        if not items:
-            self.list_widget.addItem(file_name)
-            # 同步到主視圖的列表
-            if hasattr(self.parent(), 'image_list_widget'):
-                items = self.parent().image_list_widget.findItems(file_name, Qt.MatchExactly)
+                # 檢查列表中是否已有此檔名，沒有才添加
+                items = self.list_widget.findItems(file_name, Qt.MatchExactly)
                 if not items:
-                    self.parent().image_list_widget.addItem(file_name)
+                    self.list_widget.addItem(file_name)
+                    # 同步到主視圖的列表
+                    if hasattr(self.parent(), 'image_list_widget'):
+                        items = self.parent().image_list_widget.findItems(file_name, Qt.MatchExactly)
+                        if not items:
+                            self.parent().image_list_widget.addItem(file_name)
 
-        self.update_status(f"已載入圖片: {file_name}")
+                self.label.setText("已載入")
+                if self.log_view:
+                    self.log_view.append_log(f"已載入圖片: {file_name}")
+
+            except Exception as e:
+                self.label.setText("處理失敗")
+                if self.log_view:
+                    self.log_view.append_log(f"處理圖片時發生錯誤: {str(e)}")
+
+        except Exception as e:
+            self.label.setText("處理失敗")
+            if self.log_view:
+                self.log_view.append_log(f"整體處理過程發生錯誤: {str(e)}")
 
     def wheelEvent(self, event: QWheelEvent):
         """使用滾輪放大縮小，因 pen.setCosmetic(False)，線條與箭頭會跟隨縮放。"""
