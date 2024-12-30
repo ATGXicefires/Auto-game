@@ -1,64 +1,33 @@
 {
-    "E.png": {
+    "upscale.jpg": {
         "position": {
-            "x": 627.0,
-            "y": -102.0
+            "x": -2146.3252992,
+            "y": 21.499084799999878
+        },
+        "connections": [
+            {
+                "from": "bg.png",
+                "to": "upscale.jpg"
+            }
+        ]
+    },
+    "bg.png": {
+        "position": {
+            "x": 361.9012607999998,
+            "y": -28.665446400000064
         },
         "connections": []
     },
-    "A.png": {
-        "position": {
-            "x": -6.0,
-            "y": -145.0
-        },
-        "connections": [
-            {
-                "from": "B.png",
-                "to": "A.png"
-            }
-        ]
-    },
-    "B.png": {
-        "position": {
-            "x": 13.0,
-            "y": 107.0
-        },
-        "connections": [
-            {
-                "from": "C.png",
-                "to": "B.png"
-            }
-        ]
-    },
-    "C.png": {
-        "position": {
-            "x": 195.0,
-            "y": 286.0
-        },
-        "connections": [
-            {
-                "from": "D.png",
-                "to": "C.png"
-            }
-        ]
-    },
-    "D.png": {
-        "position": {
-            "x": 550.0,
-            "y": 181.0
-        },
-        "connections": [
-            {
-                "from": "E.png",
-                "to": "D.png"
-            }
-        ]
-    },
     "steps": {
-        "Step1": "detect\\A.png",
-        "Step2": "detect\\B.png",
-        "Step3": "detect\\C.png",
-        "Step4": "detect\\D.png",
-        "Step5": "detect\\E.png"
+        "Step1": {
+            "location": "detect\\upscale.jpg",
+            "timeout": 30
+        },
+        "Step2": {
+            "location": "detect\\bg.png",
+            "timeout": 30,
+            "repeat_clicks": 3,
+            "click_interval": 1.0
+        }
     }
 }

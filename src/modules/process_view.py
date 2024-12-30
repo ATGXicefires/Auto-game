@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QLabel, QGraphicsView, QGraphicsScene,
     QMenu, QGraphicsLineItem, QGraphicsPixmapItem, QGraphicsPolygonItem,
     QListWidget, QPushButton, QMessageBox, QInputDialog, QLineEdit, QDialog,
-    QDialogButtonBox, QSpinBox
+    QDialogButtonBox, QSpinBox, QDoubleSpinBox
 )
 from PySide6.QtGui import (
     QPixmap, QDragEnterEvent, QDropEvent, QFont, QWheelEvent,
@@ -233,9 +233,16 @@ class ProcessView(QWidget):
             # 添加屬性選項及其子選單
             properties_menu = menu.addMenu("屬性")
             
-            # 點擊設定
-            click_action = properties_menu.addAction("點擊設定")
-            click_action.triggered.connect(lambda: self.show_click_settings(item if isinstance(item, PixmapNode) else selected_items[0]))
+            # 點擊設定子選單
+            click_settings_menu = properties_menu.addMenu("點擊設定")
+            
+            # 尋找時限設定
+            timeout_action = click_settings_menu.addAction("尋找時限")
+            timeout_action.triggered.connect(lambda: self.show_timeout_settings(item if isinstance(item, PixmapNode) else selected_items[0]))
+            
+            # 重複點擊設定
+            repeat_action = click_settings_menu.addAction("重複點擊")
+            repeat_action.triggered.connect(lambda: self.show_repeat_settings(item if isinstance(item, PixmapNode) else selected_items[0]))
             
             # 圖片詳細資料
             detail_action = properties_menu.addAction("圖片詳細資料")
@@ -275,10 +282,10 @@ class ProcessView(QWidget):
         
         event.accept()
 
-    def show_click_settings(self, item: PixmapNode):
-        """顯示點擊設定"""
+    def show_timeout_settings(self, item: PixmapNode):
+        """顯示尋找時限設定"""
         dialog = QDialog(self)
-        dialog.setWindowTitle("點擊設定")
+        dialog.setWindowTitle("尋找時限設定")
         layout = QVBoxLayout()
         
         # 超時設定
@@ -303,73 +310,116 @@ class ProcessView(QWidget):
         
         if dialog.exec_() == QDialog.Accepted:
             item.timeout = timeout_spinbox.value()
+            self.update_json_timeout(item)
+
+    def show_repeat_settings(self, item: PixmapNode):
+        """顯示重複點擊設定"""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("重複點擊設定")
+        layout = QVBoxLayout()
+        
+        # 重複次數設定
+        repeat_layout = QHBoxLayout()
+        repeat_label = QLabel("點擊次數：")
+        repeat_spinbox = QSpinBox()
+        repeat_spinbox.setRange(1, 100)
+        repeat_spinbox.setValue(item.repeat_clicks if hasattr(item, 'repeat_clicks') else 1)
+        repeat_layout.addWidget(repeat_label)
+        repeat_layout.addWidget(repeat_spinbox)
+        
+        # 點擊間隔設定
+        interval_layout = QHBoxLayout()
+        interval_label = QLabel("點擊間隔（秒）：")
+        interval_spinbox = QDoubleSpinBox()
+        interval_spinbox.setRange(0.1, 60.0)
+        interval_spinbox.setSingleStep(0.1)
+        interval_spinbox.setValue(item.click_interval if hasattr(item, 'click_interval') else 1)
+        interval_layout.addWidget(interval_label)
+        interval_layout.addWidget(interval_spinbox)
+        
+        # 確認按鈕
+        button_box = QDialogButtonBox(
+            QDialogButtonBox.Ok | QDialogButtonBox.Cancel
+        )
+        button_box.accepted.connect(dialog.accept)
+        button_box.rejected.connect(dialog.reject)
+        
+        layout.addLayout(repeat_layout)
+        layout.addLayout(interval_layout)
+        layout.addWidget(button_box)
+        dialog.setLayout(layout)
+        
+        if dialog.exec_() == QDialog.Accepted:
+            item.repeat_clicks = repeat_spinbox.value()
+            item.click_interval = interval_spinbox.value()
+            self.update_json_click_settings(item)
+
+    def update_json_click_settings(self, item):
+        """更新 JSON 中的點擊設定"""
+        try:
+            save_data_path = get_resource_path('SaveData')
+            json_files = [f for f in os.listdir(save_data_path) if f.endswith('.json')]
             
-            # 更新 JSON 檔案中的 timeout 設定
-            try:
-                # 找出所有可能的 JSON 檔案
-                save_data_path = get_resource_path('SaveData')
-                json_files = [f for f in os.listdir(save_data_path) if f.endswith('.json')]
-                
-                if not json_files:
-                    self.update_status("找不到任何 JSON 檔案")
+            if not json_files:
+                if self.log_view:
+                    self.log_view.append_log("找不到任何 JSON 檔案")
+                return
+            
+            # 如果有多個檔案，讓使用者選擇
+            if len(json_files) > 1:
+                file_name, ok = QInputDialog.getItem(
+                    self,
+                    "選擇檔案",
+                    "請選擇要更新的檔案：",
+                    json_files,
+                    0,
+                    False
+                )
+                if not ok:
                     return
-                    
-                # 如果有多個檔案，讓使用者選擇
-                if len(json_files) > 1:
-                    file_name, ok = QInputDialog.getItem(
-                        self,
-                        "選擇檔案",
-                        "請選擇要更新的檔案：",
-                        json_files,
-                        0,
-                        False
-                    )
-                    if not ok:
-                        return
-                else:
-                    file_name = json_files[0]
+            else:
+                file_name = json_files[0]
+            
+            json_path = os.path.join(save_data_path, file_name)
+            
+            # 讀取 JSON 檔案
+            with open(json_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            # 取得目標檔案名稱
+            target_file = os.path.basename(item.file_path)
+            
+            # 在 steps 中找到對應的步驟並更新設定
+            if 'steps' in data:
+                updated = False
+                for step_data in data['steps'].values():
+                    if isinstance(step_data, dict):
+                        if step_data.get('location', '').endswith(target_file):
+                            step_data['repeat_clicks'] = item.repeat_clicks
+                            step_data['click_interval'] = item.click_interval
+                            updated = True
+                    elif isinstance(step_data, str) and step_data.endswith(target_file):
+                        # 如果是舊格式，轉換為新格式
+                        step_data = {
+                            'location': step_data,
+                            'repeat_clicks': item.repeat_clicks,
+                            'click_interval': item.click_interval
+                        }
+                        updated = True
                 
-                json_path = os.path.join(save_data_path, file_name)
-                
-                # 讀取 JSON 檔案
-                with open(json_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                
-                # 取得目標檔案名稱
-                target_file = os.path.basename(item.file_path)
-                
-                # 在 steps 中找到對應的步驟並更新 timeout
-                if 'steps' in data:
-                    updated = False
-                    for step_key, step_data in data['steps'].items():
-                        if isinstance(step_data, dict):
-                            # 檢查是否為當前節點
-                            if step_data.get('location', '').endswith(target_file):
-                                step_data['timeout'] = item.timeout
-                                updated = True
-                        elif isinstance(step_data, str):
-                            # 如果是舊格式，轉換為新格式
-                            if step_data.endswith(target_file):
-                                data['steps'][step_key] = {
-                                    'location': step_data,
-                                    'timeout': item.timeout
-                                }
-                                updated = True
-                    
-                    if not updated:
-                        self.update_status(f"在 JSON 中找不到對應的節點：{target_file}")
-                        return
-                    
+                if updated:
                     # 保存更新後的 JSON
                     with open(json_path, 'w', encoding='utf-8') as f:
                         json.dump(data, f, indent=4, ensure_ascii=False)
-                    
-                    self.update_status(f"已更新節點 {target_file} 的超時設定為 {item.timeout} 秒")
+                    if self.log_view:
+                        self.log_view.append_log(f"已更新節點 {target_file} 的點擊設定")
                 else:
-                    self.update_status("JSON 檔案中找不到 steps 欄位")
-                
-            except Exception as e:
-                self.update_status(f"更新超時設定時發生錯誤：{str(e)}")
+                    if self.log_view:
+                        self.log_view.append_log(f"在 JSON 中找不到對應的節點：{target_file}")
+            
+        except Exception as e:
+            if self.log_view:
+                self.log_view.append_log(f"更新點擊設定時發生錯誤：{str(e)}")
 
     def show_detail_settings(self, item: PixmapNode):
         """顯示圖片詳細資料"""
@@ -395,6 +445,10 @@ class ProcessView(QWidget):
         # 取得時限資訊
         timeout = getattr(item, 'timeout', 30)  # 如果沒有設定，預設為 30 秒
         
+        # 取得重複點擊設定
+        repeat_clicks = getattr(item, 'repeat_clicks', 1)  # 如果沒有設定，預設為 1 次
+        click_interval = getattr(item, 'click_interval', 1)  # 如果沒有設定，預設為 1 秒
+        
         # 建立詳細資訊文字
         detail_text = (
             f"檔案名稱：{file_name}\n"
@@ -405,7 +459,10 @@ class ProcessView(QWidget):
             f"圖片尺寸：{width} x {height}\n"
             f"場景位置：({pos.x():.2f}, {pos.y():.2f})\n"
             f"\n"
-            f"等待時限：{timeout} 秒\n"
+            f"點擊設定：\n"
+            f"  ➤ 等待時限：{timeout} 秒\n"
+            f"  ➤ 重複點擊：{repeat_clicks} 次\n"
+            f"  ➤ 點擊間隔：{click_interval} 秒\n"
             f"\n"
             f"連線資訊：\n"
             f"  ➤ 輸出連線：{outgoing_connections}\n"
@@ -447,33 +504,49 @@ class ProcessView(QWidget):
 
     def delete_image(self, item: PixmapNode):
         """刪除圖片及其相關連線"""
-        # 1. 刪除所有相關的連線
-        connections_to_remove = item.connections.copy()  # 創建副本以避免在迭代時修改
-        for other_node, line, arrow, _, _ in connections_to_remove:
-            # 從場景中移除線條和箭頭
-            self.graphics_scene.removeItem(line)
-            self.graphics_scene.removeItem(arrow)
+        if not item:
+            return
+        
+        try:
+            # 1. 刪除所有相關的連線
+            connections_to_remove = item.connections.copy()  # 創建副本以避免在迭代時修改
+            for other_node, line, arrow, _, _ in connections_to_remove:
+                if line and line in self.graphics_scene.items():
+                    self.graphics_scene.removeItem(line)
+                    line = None
+                    
+                if arrow and arrow in self.graphics_scene.items():
+                    self.graphics_scene.removeItem(arrow)
+                    arrow = None
+                
+                # 從另一個節點的 connections 中移除這個連線
+                if other_node:
+                    other_connections = []
+                    for conn in other_node.connections:
+                        if conn[0] != item:  # 如果不是要刪除的項目，則保留
+                            other_connections.append(conn)
+                    other_node.connections = other_connections
             
-            # 從另一個節點的 connections 中移除這個連線
-            other_connections = []
-            for conn in other_node.connections:
-                if conn[0] != item:  # 如果不是要刪除的項目，則保留
-                    other_connections.append(conn)
-            other_node.connections = other_connections
-        
-        # 清空當前節點的連線列表
-        item.connections.clear()
-        
-        # 2. 從列表中移除檔案名稱
-        file_name = os.path.basename(item.file_path)
-        items = self.list_widget.findItems(file_name, Qt.MatchExactly)
-        for list_item in items:
-            self.list_widget.takeItem(self.list_widget.row(list_item))
-        
-        # 3. 從場景中移除圖片節點
-        self.graphics_scene.removeItem(item)
-        
-        self.update_status(f"已刪除圖片: {file_name}")
+            # 清空當前節點的連線列表
+            item.connections.clear()
+            
+            # 2. 從列表中移除檔案名稱
+            file_name = os.path.basename(item.file_path)
+            items = self.list_widget.findItems(file_name, Qt.MatchExactly)
+            for list_item in items:
+                self.list_widget.takeItem(self.list_widget.row(list_item))
+            
+            # 3. 從場景中移除圖片節點
+            if item in self.graphics_scene.items():
+                self.graphics_scene.removeItem(item)
+                item = None
+            
+            self.update_status(f"已刪除圖片: {file_name}")
+            self.graphics_scene.update()
+            
+        except Exception as e:
+            if self.log_view:
+                self.log_view.append_log(f"刪除圖片時發生錯誤：{str(e)}")
 
     def toggleConnectionMode(self):
         self.is_connection_mode = not self.is_connection_mode
@@ -862,17 +935,22 @@ class ProcessView(QWidget):
                                 pos = data['position']
                                 node.setPos(pos['x'], pos['y'])
                             
-                            # 從 steps 中載入時限設定
+                            # 從 steps 中載入所有設定
                             if 'steps' in connections_data:
                                 for step_data in connections_data['steps'].values():
                                     if isinstance(step_data, dict):
                                         if step_data.get('location', '').endswith(file_name):
+                                            # 載入所有點擊相關設定
                                             node.timeout = step_data.get('timeout', 30)
+                                            node.repeat_clicks = step_data.get('repeat_clicks', 1)
+                                            node.click_interval = step_data.get('click_interval', 1)
                                             break
                                     elif isinstance(step_data, str) and step_data.endswith(file_name):
-                                        node.timeout = 30  # 舊格式預設 30 秒
-                                        break
-                            
+                                        # 處理舊格式
+                                        node.timeout = 30
+                                        node.repeat_clicks = 1
+                                        node.click_interval = 1
+                        
                             node_map[file_name] = node
                             
                             # 確保列表中有此圖片
@@ -901,8 +979,11 @@ class ProcessView(QWidget):
                             )
             
             self.label.setText(f"已載入連線關係和位置: {os.path.basename(json_path)}")
+            
         except Exception as e:
             self.label.setText(f"載入連線關係時發生錯誤: {str(e)}")
+            if self.log_view:
+                self.log_view.append_log(f"載入錯誤詳情: {str(e)}")
 
     def reload_connections(self):
         """重新載入連線關係"""
@@ -1022,6 +1103,125 @@ class ProcessView(QWidget):
         self.label.setText("已更新")  # 簡短狀態
         if self.log_view:  # 檢查 log_view 是否存在
             self.log_view.append_log(message)  # 詳細訊息寫入 log
+
+    def update_json_timeout(self, item):
+        """更新 JSON 中的超時設定"""
+        try:
+            save_data_path = get_resource_path('SaveData')
+            json_files = [f for f in os.listdir(save_data_path) if f.endswith('.json')]
+            
+            if not json_files:
+                if self.log_view:
+                    self.log_view.append_log("找不到任何 JSON 檔案")
+                return
+            
+            # 如果有多個檔案，讓使用者選擇
+            if len(json_files) > 1:
+                file_name, ok = QInputDialog.getItem(
+                    self,
+                    "選擇檔案",
+                    "請選擇要更新的檔案：",
+                    json_files,
+                    0,
+                    False
+                )
+                if not ok:
+                    return
+            else:
+                file_name = json_files[0]
+            
+            json_path = os.path.join(save_data_path, file_name)
+            
+            # 讀取 JSON 檔案
+            with open(json_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            # 取得目標檔案名稱
+            target_file = os.path.basename(item.file_path)
+            
+            # 在 steps 中找到對應的步驟並更新設定
+            if 'steps' in data:
+                updated = False
+                for step_data in data['steps'].values():
+                    if isinstance(step_data, dict):
+                        if step_data.get('location', '').endswith(target_file):
+                            step_data['timeout'] = item.timeout
+                            updated = True
+                    elif isinstance(step_data, str) and step_data.endswith(target_file):
+                        # 如果是舊格式，轉換為新格式
+                        step_data = {
+                            'location': step_data,
+                            'timeout': item.timeout
+                        }
+                        updated = True
+                
+                if updated:
+                    # 保存更新後的 JSON
+                    with open(json_path, 'w', encoding='utf-8') as f:
+                        json.dump(data, f, indent=4, ensure_ascii=False)
+                    if self.log_view:
+                        self.log_view.append_log(f"已更新節點 {target_file} 的超時設定")
+                else:
+                    if self.log_view:
+                        self.log_view.append_log(f"在 JSON 中找不到對應的節點：{target_file}")
+            
+        except Exception as e:
+            if self.log_view:
+                self.log_view.append_log(f"更新超時設定時發生錯誤：{str(e)}")
+
+    def load_connections_from_json(self, json_path):
+        """從 JSON 檔案載入連線關係"""
+        try:
+            with open(json_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            # 首先載入所有節點的位置和設定
+            for file_name, node_data in data.items():
+                if file_name != "steps":  # 跳過 steps 部分
+                    # 尋找對應的 PixmapNode
+                    for item in self.graphics_scene.items():
+                        if isinstance(item, PixmapNode) and os.path.basename(item.file_path) == file_name:
+                            # 設置位置
+                            if "position" in node_data:
+                                item.setPos(node_data["position"]["x"], node_data["position"]["y"])
+                            
+                            # 從 steps 中找到對應的設定並同步到節點
+                            if "steps" in data:
+                                for step in data["steps"].values():
+                                    if isinstance(step, dict) and step.get("location", "").endswith(file_name):
+                                        # 同步點擊設定
+                                        item.timeout = step.get("timeout", 30)
+                                        item.repeat_clicks = step.get("repeat_clicks", 1)
+                                        item.click_interval = step.get("click_interval", 0.5)
+                                        break
+            
+            # 然後建立連線關係
+            for file_name, node_data in data.items():
+                if file_name != "steps" and "connections" in node_data:
+                    source_item = None
+                    # 找到源節點
+                    for item in self.graphics_scene.items():
+                        if isinstance(item, PixmapNode) and os.path.basename(item.file_path) == file_name:
+                            source_item = item
+                            break
+                    
+                    if source_item:
+                        # 建立所有連線
+                        for conn in node_data["connections"]:
+                            target_file = conn["from"]  # 注意：JSON 中的 from 是目標節點
+                            # 找到目標節點
+                            for item in self.graphics_scene.items():
+                                if isinstance(item, PixmapNode) and os.path.basename(item.file_path) == target_file:
+                                    # 建立連線（使用預設的偏移量）
+                                    self.connectTwoItems(source_item, QPointF(0, 0), item, QPointF(0, 0))
+                                    break
+            
+            if self.log_view:
+                self.log_view.append_log("已從 JSON 載入連線關係")
+            
+        except Exception as e:
+            if self.log_view:
+                self.log_view.append_log(f"載入連線關係時發生錯誤：{str(e)}")
 
 class CustomGraphicsView(QGraphicsView):
     def __init__(self, parent=None):

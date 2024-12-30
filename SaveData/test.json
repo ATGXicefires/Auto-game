@@ -1,135 +1,39 @@
 {
-    "14.png": {
+    "EXIT1.png": {
         "position": {
-            "x": 1669.1650559999998,
-            "y": 17.915903999999955
+            "x": -185.0,
+            "y": 12.0
         },
         "connections": []
     },
-    "13.png": {
+    "first.png": {
         "position": {
-            "x": 1490.6458879999998,
-            "y": -278.03289599999994
+            "x": -309.0,
+            "y": -195.0
         },
         "connections": [
             {
-                "from": "14.png",
-                "to": "13.png"
+                "from": "sec.png",
+                "to": "first.png"
             }
         ]
     },
-    "12.png": {
+    "sec.png": {
         "position": {
-            "x": 1143.631872,
-            "y": 32.84582399999999
+            "x": -74.0,
+            "y": -204.0
         },
         "connections": [
             {
-                "from": "13.png",
-                "to": "12.png"
-            }
-        ]
-    },
-    "11.png": {
-        "position": {
-            "x": 1077.940224,
-            "y": 343.38815999999963
-        },
-        "connections": [
-            {
-                "from": "12.png",
-                "to": "11.png"
-            }
-        ]
-    },
-    "10.png": {
-        "position": {
-            "x": 1573.613568,
-            "y": 397.13587199999984
-        },
-        "connections": [
-            {
-                "from": "11.png",
-                "to": "10.png"
-            }
-        ]
-    },
-    "9.png": {
-        "position": {
-            "x": 1190.781184,
-            "y": 860.6501759999999
-        },
-        "connections": [
-            {
-                "from": "10.png",
-                "to": "9.png"
-            }
-        ]
-    },
-    "8.png": {
-        "position": {
-            "x": -537.4771199999999,
-            "y": 680.8043519999998
-        },
-        "connections": [
-            {
-                "from": "9.png",
-                "to": "8.png"
-            }
-        ]
-    },
-    "7.png": {
-        "position": {
-            "x": -561.3649919999998,
-            "y": -23.88787199999996
-        },
-        "connections": [
-            {
-                "from": "8.png",
-                "to": "7.png"
-            }
-        ]
-    },
-    "6.png": {
-        "position": {
-            "x": -20.90188799999993,
-            "y": -200.060928
-        },
-        "connections": [
-            {
-                "from": "7.png",
-                "to": "6.png"
-            }
-        ]
-    },
-    "5.png": {
-        "position": {
-            "x": 140.34124799999995,
-            "y": 89.57951999999997
-        },
-        "connections": [
-            {
-                "from": "6.png",
-                "to": "5.png"
-            }
-        ]
-    },
-    "4.png": {
-        "position": {
-            "x": 59.71968000000004,
-            "y": 1197.3795839999998
-        },
-        "connections": [
-            {
-                "from": "5.png",
-                "to": "4.png"
+                "from": "3.png",
+                "to": "sec.png"
             }
         ]
     },
     "3.png": {
         "position": {
-            "x": 743.5100159999998,
-            "y": 1182.4496639999998
+            "x": 189.0,
+            "y": -172.0
         },
         "connections": [
             {
@@ -138,37 +42,37 @@
             }
         ]
     },
-    "2.png": {
+    "4.png": {
         "position": {
-            "x": 764.4119039999998,
-            "y": -665.8744319999997
+            "x": 173.0,
+            "y": 75.0
         },
         "connections": [
             {
-                "from": "3.png",
-                "to": "2.png"
+                "from": "接受中文檔名.png",
+                "to": "4.png"
             }
         ]
     },
-    "1.png": {
+    "接受中文檔名.png": {
         "position": {
-            "x": 223.94879999999995,
-            "y": -630.0426239999998
+            "x": -133.0,
+            "y": 279.0
         },
         "connections": [
             {
-                "from": "2.png",
-                "to": "1.png"
+                "from": "EXIT1.png",
+                "to": "接受中文檔名.png"
             }
         ]
     },
     "steps": {
         "Step1": {
-            "location": "detect\\1.png",
-            "timeout": 30
+            "location": "detect\\first.png",
+            "timeout": 45
         },
         "Step2": {
-            "location": "detect\\2.png",
+            "location": "detect\\sec.png",
             "timeout": 30
         },
         "Step3": {
@@ -177,47 +81,19 @@
         },
         "Step4": {
             "location": "detect\\4.png",
-            "timeout": 45
+            "timeout": 30
         },
         "Step5": {
-            "location": "detect\\5.png",
-            "timeout": 30
+            "location": "detect\\接受中文檔名.png",
+            "timeout": 30,
+            "repeat_clicks": 2,
+            "click_interval": 1.0
         },
         "Step6": {
-            "location": "detect\\6.png",
-            "timeout": 30
-        },
-        "Step7": {
-            "location": "detect\\7.png",
-            "timeout": 30
-        },
-        "Step8": {
-            "location": "detect\\8.png",
-            "timeout": 30
-        },
-        "Step9": {
-            "location": "detect\\9.png",
-            "timeout": 180
-        },
-        "Step10": {
-            "location": "detect\\10.png",
-            "timeout": 30
-        },
-        "Step11": {
-            "location": "detect\\11.png",
-            "timeout": 30
-        },
-        "Step12": {
-            "location": "detect\\12.png",
-            "timeout": 30
-        },
-        "Step13": {
-            "location": "detect\\13.png",
-            "timeout": 30
-        },
-        "Step14": {
-            "location": "detect\\14.png",
-            "timeout": 45
+            "location": "detect\\EXIT1.png",
+            "timeout": 30,
+            "repeat_clicks": 2,
+            "click_interval": 1.0
         }
     }
 }

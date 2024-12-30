@@ -1,78 +1,32 @@
 {
-    "E.png": {
+    "sec.png": {
         "position": {
-            "x": 627.0,
-            "y": -102.0
+            "x": 193.0,
+            "y": 7.0
         },
         "connections": []
     },
-    "A.png": {
+    "first.png": {
         "position": {
-            "x": -6.0,
-            "y": -145.0
+            "x": -76.0,
+            "y": 9.0
         },
         "connections": [
             {
-                "from": "B.png",
-                "to": "A.png"
-            }
-        ]
-    },
-    "B.png": {
-        "position": {
-            "x": 13.0,
-            "y": 107.0
-        },
-        "connections": [
-            {
-                "from": "C.png",
-                "to": "B.png"
-            }
-        ]
-    },
-    "C.png": {
-        "position": {
-            "x": 195.0,
-            "y": 286.0
-        },
-        "connections": [
-            {
-                "from": "D.png",
-                "to": "C.png"
-            }
-        ]
-    },
-    "D.png": {
-        "position": {
-            "x": 550.0,
-            "y": 181.0
-        },
-        "connections": [
-            {
-                "from": "E.png",
-                "to": "D.png"
+                "from": "sec.png",
+                "to": "first.png"
             }
         ]
     },
     "steps": {
         "Step1": {
-            "location": "detect\\A.png",
-            "timeout": 5
+            "location": "detect\\first.png",
+            "timeout": 100,
+            "repeat_clicks": 3,
+            "click_interval": 1.0
         },
         "Step2": {
-            "location": "detect\\B.png",
-            "timeout": 30
-        },
-        "Step3": {
-            "location": "detect\\C.png",
-            "timeout": 30
-        },
-        "Step4": {
-            "location": "detect\\D.png",
-            "timeout": 30
-        },
-        "Step5": {
-            "location": "detect\\E.png",
+            "location": "detect\\sec.png",
             "timeout": 30
         }
     }
