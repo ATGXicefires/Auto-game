@@ -34,18 +34,17 @@ def load_steps_from_json(json_path):
         while f"Step{i}" in steps_dict:
             step_data = steps_dict[f"Step{i}"]
             
-            # 處理新舊格式相容性
-            if isinstance(step_data, str):
-                steps_array.append({
-                    'location': step_data,
-                    'timeout': 30
-                })
-            else:
-                steps_array.append({
-                    'location': step_data.get('location', ''),
-                    'timeout': step_data.get('timeout', 30)
-                })
-                
+            # 構建步驟信息
+            step_info = {
+                'location': step_data.get('location', ''),
+                'timeout': step_data.get('timeout', 30),
+                'repeat_clicks': step_data.get('repeat_clicks', 1),
+                'click_interval': step_data.get('click_interval', 1)
+            }
+            
+            print(f"Step{i} - repeat_clicks: {step_info['repeat_clicks']}, click_interval: {step_info['click_interval']}")  # 調試輸出
+            
+            steps_array.append(step_info)
             max_steps = i
             i += 1
             
@@ -101,7 +100,7 @@ def ADB_click(x, y):
         print(f"ADB 點擊時發生錯誤: {str(e)}")
         return False
 
-def detect_and_click_image(template_path, log_view, confidence=0.9, timeout=30, is_adb_mode=False, max_retries=3):
+def detect_and_click_image(template_path, log_view, confidence=0.9, timeout=30, is_adb_mode=False, max_retries=3, repeat_clicks=1, click_interval=1):
     """
     在螢幕上偵測圖片並點擊
     
@@ -112,6 +111,8 @@ def detect_and_click_image(template_path, log_view, confidence=0.9, timeout=30, 
         timeout (int): 超時時間(秒)
         is_adb_mode (bool): 是否使用 ADB 模式
         max_retries (int): 最大重試次數
+        repeat_clicks (int): 重複點擊次數
+        click_interval (float): 點擊間隔時間(秒)
     
     Returns:
         tuple or None: 如果找到圖片則返回座標，否則返回 None
@@ -145,23 +146,30 @@ def detect_and_click_image(template_path, log_view, confidence=0.9, timeout=30, 
                 log_view.append_log(f"截圖失敗 (嘗試 {retry_count}/{max_retries}): {str(e)}")
                 time.sleep(1)
         return None
-
-    def perform_click(x, y):
-        retry_count = 0
-        while retry_count < max_retries:
+        
+    def perform_clicks(x, y, repeat_clicks, click_interval, is_adb_mode, log_view):
+        """執行點擊操作，支援重複點擊"""
+        log_view.append_log(f"開始執行點擊，總次數: {repeat_clicks}, 間隔: {click_interval}秒")
+        for click_count in range(repeat_clicks):
             try:
                 if is_adb_mode:
-                    if ADB_click(x, y):
-                        return True
+                    if not ADB_click(x, y):
+                        log_view.append_log(f"ADB 點擊失敗")
+                        return False
                 else:
                     pyautogui.moveTo(x, y, duration=0.5)
                     pyautogui.click()
-                    return True
+                
+                log_view.append_log(f"完成第 {click_count + 1}/{repeat_clicks} 次點擊")
+                
+                if click_count < repeat_clicks - 1:  # 如果不是最後一次點擊
+                    log_view.append_log(f"等待 {click_interval} 秒後進行下一次點擊")
+                    time.sleep(click_interval)
+                    
             except Exception as e:
-                retry_count += 1
-                log_view.append_log(f"點擊失敗 (嘗試 {retry_count}/{max_retries}): {str(e)}")
-                time.sleep(1)
-        return False
+                log_view.append_log(f"第 {click_count + 1} 次點擊失敗: {str(e)}")
+                return False
+        return True
 
     start_time = time.time()
     log_view.append_log(f"開始尋找圖片，超時時間設定為 {timeout} 秒")
@@ -188,17 +196,17 @@ def detect_and_click_image(template_path, log_view, confidence=0.9, timeout=30, 
                 center_y = max_loc[1] + template_height // 2
                 log_view.append_log(f"找到匹配位置: {max_loc}, 匹配值: {max_val}, 中心點: ({center_x}, {center_y})")
 
-                if perform_click(center_x, center_y):
-                    log_view.append_log("點擊成功")
+                if perform_clicks(center_x, center_y, repeat_clicks, click_interval, is_adb_mode, log_view):
+                    log_view.append_log(f"完成所有點擊操作 (共 {repeat_clicks} 次)")
                     return (center_x, center_y)
                 else:
-                    log_view.append_log("點擊失敗")
-                    continue
+                    log_view.append_log("點擊操作失敗")
+                    return None
 
             remaining_time = int(timeout - (time.time() - start_time))
-            if remaining_time > 0:  # 只在還有剩餘時間時顯示訊息
+            if remaining_time > 0:
                 log_view.append_log(f"當前匹配準確值：{max_val}，剩餘時間：{remaining_time}秒")
-            time.sleep(0.5)  # 降低檢查頻率
+            time.sleep(0.5)
 
         except Exception as e:
             log_view.append_log(f"處理過程發生錯誤: {str(e)}")
@@ -217,14 +225,24 @@ def Click_step_by_step(step_array, log_view):
     total_steps = len(step_array)
     for current_step, step in enumerate(step_array, 1):
         template_path = get_resource_path(step['location'])
-        timeout = step['timeout']  # 使用步驟特定的 timeout 設定
-        log_view.append_log(f"正在執行第 {current_step}/{total_steps} 步: {step['location']} (超時設定: {timeout}秒)")
+        timeout = step['timeout']
+        repeat_clicks = step.get('repeat_clicks', 1)  # 確保有預設值
+        click_interval = step.get('click_interval', 1)  # 確保有預設值
+        
+        log_view.append_log(
+            f"正在執行第 {current_step}/{total_steps} 步: {step['location']}\n"
+            f"超時設定: {timeout}秒, 點擊次數: {repeat_clicks}, 間隔: {click_interval}秒"
+        )
+        
+        print(f"Executing Step {current_step} - repeat_clicks: {repeat_clicks}, click_interval: {click_interval}")  # 調試輸出
         
         result = detect_and_click_image(
-            template_path, 
-            log_view, 
-            timeout=timeout,  # 傳遞 timeout 設定
-            is_adb_mode=False
+            template_path=template_path,
+            log_view=log_view,
+            timeout=timeout,
+            is_adb_mode=False,
+            repeat_clicks=repeat_clicks,
+            click_interval=click_interval
         )
         
         if result is None:
@@ -246,14 +264,22 @@ def ADB_Click_step_by_step(step_array, log_view):
     total_steps = len(step_array)
     for current_step, step in enumerate(step_array, 1):
         template_path = get_resource_path(step['location'])
-        timeout = step['timeout']  # 使用步驟特定的 timeout 設定
-        log_view.append_log(f"正在執行第 {current_step}/{total_steps} 步: {step['location']} (超時設定: {timeout}秒)")
+        timeout = step.get('timeout', 30)  # 使用步驟特定的 timeout 設定
+        repeat_clicks = step.get('repeat_clicks', 1)  # 獲取重複點擊次數
+        click_interval = step.get('click_interval', 1)  # 獲取點擊間隔
+        
+        log_view.append_log(
+            f"正在執行第 {current_step}/{total_steps} 步: {step['location']}\n"
+            f"超時設定: {timeout}秒, 點擊次數: {repeat_clicks}, 間隔: {click_interval}秒"
+        )
         
         result = detect_and_click_image(
-            template_path, 
-            log_view, 
-            timeout=timeout,  # 傳遞 timeout 設定
-            is_adb_mode=True
+            template_path=template_path,
+            log_view=log_view,
+            timeout=timeout,
+            is_adb_mode=True,
+            repeat_clicks=repeat_clicks,  # 傳遞重複點擊次數
+            click_interval=click_interval  # 傳遞點擊間隔
         )
         
         if result is None:
