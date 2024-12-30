@@ -39,3 +39,62 @@ class file_operations:
             layout.addWidget(element)
         widget.setLayout(layout)
         return widget
+
+class ButtonPropertyManager:
+    def __init__(self, default_properties=None):
+        """
+        初始化 ButtonPropertyManager。
+        :param default_properties: 默認屬性（字典形式）
+        """
+        self.default_properties = default_properties or {}
+
+    def apply_properties(self, buttons, properties_list):
+        """
+        批量为多个按钮设置属性。
+        :param buttons: QPushButton 对象列表。
+        :param properties_list: 属性字典列表，每个字典对应一个按钮。
+        """
+        if len(buttons) != len(properties_list):
+            raise ValueError("The number of buttons and properties must match.")
+
+        for button, properties in zip(buttons, properties_list):
+            merged_properties = self.merge_properties(properties)
+            self.apply_properties_to_button(button, merged_properties)
+
+    def apply_properties_to_button(self, button, properties):
+        """
+        为单个按钮设置属性。
+        :param button: QPushButton 对象
+        :param properties: 属性字典
+        """
+        if not isinstance(properties, dict):
+            raise ValueError("Properties must be a dictionary.")
+
+        for attr, value in properties.items():
+            if hasattr(button, attr):
+                try:
+                    setattr(button, attr, value)
+                except Exception as e:
+                    self.handle_property_error(button, attr, value, e)
+            else:
+                self.handle_missing_attribute(button, attr)
+
+    def merge_properties(self, properties):
+        """
+        合并默认属性和指定属性。
+        :param properties: 指定的属性字典
+        :return: 合并后的字典
+        """
+        return {**self.default_properties, **properties}
+
+    def handle_property_error(self, button, attr, value, exception):
+        """
+        屬性設置失敗時的錯誤處理。
+        """
+        print(f"Error setting attribute '{attr}' to '{value}' on button '{button.text()}': {exception}")
+
+    def handle_missing_attribute(self, button, attr):
+        """
+        處理缺少屬性的情況。
+        """
+        print(f"Button '{button.text()}' does not have attribute '{attr}'.")
