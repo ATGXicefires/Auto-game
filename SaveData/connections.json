@@ -1,32 +1,106 @@
 {
-    "upscale.jpg": {
+    "EXIT1.png": {
         "position": {
-            "x": -2146.3252992,
-            "y": 21.499084799999878
-        },
-        "connections": [
-            {
-                "from": "bg.png",
-                "to": "upscale.jpg"
-            }
-        ]
-    },
-    "bg.png": {
-        "position": {
-            "x": 361.9012607999998,
-            "y": -28.665446400000064
+            "x": -185.0,
+            "y": 12.0
         },
         "connections": []
     },
+    "first.png": {
+        "position": {
+            "x": -309.0,
+            "y": -195.0
+        },
+        "connections": [
+            {
+                "from": "sec.png",
+                "to": "first.png"
+            }
+        ]
+    },
+    "sec.png": {
+        "position": {
+            "x": -74.0,
+            "y": -204.0
+        },
+        "connections": [
+            {
+                "from": "3.png",
+                "to": "sec.png"
+            }
+        ]
+    },
+    "3.png": {
+        "position": {
+            "x": 189.0,
+            "y": -172.0
+        },
+        "connections": [
+            {
+                "from": "4.png",
+                "to": "3.png"
+            }
+        ]
+    },
+    "4.png": {
+        "position": {
+            "x": 173.0,
+            "y": 75.0
+        },
+        "connections": [
+            {
+                "from": "接受中文檔名.png",
+                "to": "4.png"
+            }
+        ]
+    },
+    "接受中文檔名.png": {
+        "position": {
+            "x": -133.0,
+            "y": 279.0
+        },
+        "connections": [
+            {
+                "from": "EXIT1.png",
+                "to": "接受中文檔名.png"
+            }
+        ]
+    },
     "steps": {
         "Step1": {
-            "location": "detect\\upscale.jpg",
-            "timeout": 30
+            "location": "detect\\first.png",
+            "timeout": 45,
+            "repeat_clicks": 3,
+            "click_interval": 1.0
         },
         "Step2": {
-            "location": "detect\\bg.png",
+            "location": "detect\\sec.png",
             "timeout": 30,
-            "repeat_clicks": 3,
+            "repeat_clicks": 1,
+            "click_interval": 1.0
+        },
+        "Step3": {
+            "location": "detect\\3.png",
+            "timeout": 30,
+            "repeat_clicks": 1,
+            "click_interval": 1.0
+        },
+        "Step4": {
+            "location": "detect\\4.png",
+            "timeout": 30,
+            "repeat_clicks": 1,
+            "click_interval": 1.0
+        },
+        "Step5": {
+            "location": "detect\\接受中文檔名.png",
+            "timeout": 30,
+            "repeat_clicks": 1,
+            "click_interval": 1.0
+        },
+        "Step6": {
+            "location": "detect\\EXIT1.png",
+            "timeout": 30,
+            "repeat_clicks": 1,
             "click_interval": 1.0
         }
     }

@@ -101,7 +101,7 @@ def ADB_click(x, y):
         print(f"ADB 點擊時發生錯誤: {str(e)}")
         return False
 
-def detect_and_click_image(template_path, log_view, confidence=0.9, timeout=30, is_adb_mode=False, max_retries=3, repeat_clicks=1, click_interval=1):
+def detect_and_click_image(template_path, log_view, confidence=0.9, timeout=30, is_adb_mode=False, max_retries=3, repeat_clicks=1, click_interval=1.0):
     """
     在螢幕上偵測圖片並點擊
     
@@ -229,22 +229,24 @@ def Click_step_by_step(step_array, log_view):
     total_steps = len(step_array)
     for current_step, step in enumerate(step_array, 1):
         template_path = get_resource_path(step['location'])
-        timeout = step.get('timeout', 30)  # 提供預設值
-        repeat_clicks = step.get('repeat_clicks', 1)  # 提供預設值
-        click_interval = step.get('click_interval', 1.0)  # 提供預設值
+        timeout = step.get('timeout', 30)  
+        repeat_clicks = step.get('repeat_clicks', 1)  
+        click_interval = step.get('click_interval', 1.0)  
         
         log_view.append_log(
             f"正在執行第 {current_step}/{total_steps} 步: {step['location']}\n"
             f"超時設定: {timeout}秒, 點擊次數: {repeat_clicks}, 間隔: {click_interval}秒"
         )
         
+        print(f"Executing Step {current_step} - repeat_clicks: {repeat_clicks}, click_interval: {click_interval}")  # 調試輸出
+        
         result = detect_and_click_image(
             template_path=template_path,
             log_view=log_view,
             timeout=timeout,
             is_adb_mode=False,
-            repeat_clicks=repeat_clicks,  # 傳遞 repeat_clicks
-            click_interval=click_interval  # 傳遞 click_interval
+            repeat_clicks=repeat_clicks,
+            click_interval=click_interval
         )
         
         if result is None:
@@ -266,9 +268,9 @@ def ADB_Click_step_by_step(step_array, log_view):
     total_steps = len(step_array)
     for current_step, step in enumerate(step_array, 1):
         template_path = get_resource_path(step['location'])
-        timeout = step['timeout']  # 使用步驟特定的 timeout 設定
-        repeat_clicks = step['repeat_clicks']  # 獲取重複點擊次數
-        click_interval = step['click_interval']  # 獲取點擊間隔
+        timeout = step.get('timeout', 30)  # 使用步驟特定的 timeout 設定
+        repeat_clicks = step.get('repeat_clicks', 1)     # 獲取重複點擊次數
+        click_interval = step.get('click_interval', 1.0)  # 獲取點擊間隔
         
         log_view.append_log(
             f"正在執行第 {current_step}/{total_steps} 步: {step['location']}\n"

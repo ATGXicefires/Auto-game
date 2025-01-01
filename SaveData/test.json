@@ -69,7 +69,7 @@
     "steps": {
         "Step1": {
             "location": "detect\\first.png",
-            "timeout": 30,
+            "timeout": 45,
             "repeat_clicks": 3,
             "click_interval": 1.0
         },

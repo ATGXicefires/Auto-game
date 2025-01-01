@@ -1,0 +1,179 @@
+{
+    "接受中文檔名.png": {
+        "position": {
+            "x": 142.0,
+            "y": 114.0
+        },
+        "connections": [
+            {
+                "from": "5.png",
+                "to": "接受中文檔名.png"
+            }
+        ]
+    },
+    "sec.png": {
+        "position": {
+            "x": -400.0,
+            "y": -217.0
+        },
+        "connections": [
+            {
+                "from": "3.png",
+                "to": "sec.png"
+            }
+        ]
+    },
+    "Screenshot_2024.12.29_00.37.33.711.png": {
+        "position": {
+            "x": -229.0,
+            "y": 118.0
+        },
+        "connections": [
+            {
+                "from": "EXIT1.png",
+                "to": "Screenshot_2024.12.29_00.37.33.711.png"
+            }
+        ]
+    },
+    "first.png": {
+        "position": {
+            "x": -648.0,
+            "y": -184.0
+        },
+        "connections": [
+            {
+                "from": "sec.png",
+                "to": "first.png"
+            }
+        ]
+    },
+    "EXIT3.png": {
+        "position": {
+            "x": -570.0,
+            "y": -28.0
+        },
+        "connections": []
+    },
+    "EXIT2.png": {
+        "position": {
+            "x": -571.0,
+            "y": 112.0
+        },
+        "connections": [
+            {
+                "from": "EXIT3.png",
+                "to": "EXIT2.png"
+            }
+        ]
+    },
+    "EXIT1.png": {
+        "position": {
+            "x": -388.0,
+            "y": 128.0
+        },
+        "connections": [
+            {
+                "from": "EXIT2.png",
+                "to": "EXIT1.png"
+            }
+        ]
+    },
+    "5.png": {
+        "position": {
+            "x": -34.0,
+            "y": 128.0
+        },
+        "connections": [
+            {
+                "from": "Screenshot_2024.12.29_00.37.33.711.png",
+                "to": "5.png"
+            }
+        ]
+    },
+    "4.png": {
+        "position": {
+            "x": 184.0,
+            "y": -188.0
+        },
+        "connections": [
+            {
+                "from": "接受中文檔名.png",
+                "to": "4.png"
+            }
+        ]
+    },
+    "3.png": {
+        "position": {
+            "x": -124.0,
+            "y": -181.0
+        },
+        "connections": [
+            {
+                "from": "4.png",
+                "to": "3.png"
+            }
+        ]
+    },
+    "steps": {
+        "Step1": {
+            "location": "detect\\first.png",
+            "timeout": 30,
+            "repeat_clicks": 1,
+            "click_interval": 1.0
+        },
+        "Step2": {
+            "location": "detect\\sec.png",
+            "timeout": 30,
+            "repeat_clicks": 1,
+            "click_interval": 1.0
+        },
+        "Step3": {
+            "location": "detect\\3.png",
+            "timeout": 30,
+            "repeat_clicks": 1,
+            "click_interval": 1.0
+        },
+        "Step4": {
+            "location": "detect\\4.png",
+            "timeout": 30,
+            "repeat_clicks": 1,
+            "click_interval": 1.0
+        },
+        "Step5": {
+            "location": "detect\\接受中文檔名.png",
+            "timeout": 30,
+            "repeat_clicks": 1,
+            "click_interval": 1.0
+        },
+        "Step6": {
+            "location": "detect\\5.png",
+            "timeout": 30,
+            "repeat_clicks": 1,
+            "click_interval": 1.0
+        },
+        "Step7": {
+            "location": "detect\\Screenshot_2024.12.29_00.37.33.711.png",
+            "timeout": 30,
+            "repeat_clicks": 1,
+            "click_interval": 1.0
+        },
+        "Step8": {
+            "location": "detect\\EXIT1.png",
+            "timeout": 30,
+            "repeat_clicks": 1,
+            "click_interval": 1.0
+        },
+        "Step9": {
+            "location": "detect\\EXIT2.png",
+            "timeout": 30,
+            "repeat_clicks": 1,
+            "click_interval": 1.0
+        },
+        "Step10": {
+            "location": "detect\\EXIT3.png",
+            "timeout": 30,
+            "repeat_clicks": 1,
+            "click_interval": 1.0
+        }
+    }
+}
