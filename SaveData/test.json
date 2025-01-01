@@ -1,44 +1,13 @@
 {
-    "EXIT1.png": {
+    "接受中文檔名.png": {
         "position": {
-            "x": -185.0,
-            "y": 12.0
-        },
-        "connections": []
-    },
-    "first.png": {
-        "position": {
-            "x": -309.0,
-            "y": -195.0
+            "x": -133.0,
+            "y": 279.0
         },
         "connections": [
             {
-                "from": "sec.png",
-                "to": "first.png"
-            }
-        ]
-    },
-    "sec.png": {
-        "position": {
-            "x": -74.0,
-            "y": -204.0
-        },
-        "connections": [
-            {
-                "from": "3.png",
-                "to": "sec.png"
-            }
-        ]
-    },
-    "3.png": {
-        "position": {
-            "x": 189.0,
-            "y": -172.0
-        },
-        "connections": [
-            {
-                "from": "4.png",
-                "to": "3.png"
+                "from": "EXIT1.png",
+                "to": "接受中文檔名.png"
             }
         ]
     },
@@ -54,45 +23,84 @@
             }
         ]
     },
-    "接受中文檔名.png": {
+    "3.png": {
         "position": {
-            "x": -133.0,
-            "y": 279.0
+            "x": 189.0,
+            "y": -172.0
         },
         "connections": [
             {
-                "from": "EXIT1.png",
-                "to": "接受中文檔名.png"
+                "from": "4.png",
+                "to": "3.png"
             }
         ]
+    },
+    "sec.png": {
+        "position": {
+            "x": -74.0,
+            "y": -204.0
+        },
+        "connections": [
+            {
+                "from": "3.png",
+                "to": "sec.png"
+            }
+        ]
+    },
+    "first.png": {
+        "position": {
+            "x": -309.0,
+            "y": -195.0
+        },
+        "connections": [
+            {
+                "from": "sec.png",
+                "to": "first.png"
+            }
+        ]
+    },
+    "EXIT1.png": {
+        "position": {
+            "x": -185.0,
+            "y": 12.0
+        },
+        "connections": []
     },
     "steps": {
         "Step1": {
             "location": "detect\\first.png",
-            "timeout": 45
+            "timeout": 45,
+            "repeat_clicks": 3,
+            "click_interval": 1.0
         },
         "Step2": {
             "location": "detect\\sec.png",
-            "timeout": 30
+            "timeout": 30,
+            "repeat_clicks": 1,
+            "click_interval": 1.0
         },
         "Step3": {
             "location": "detect\\3.png",
-            "timeout": 30
+            "timeout": 30,
+            "repeat_clicks": 1,
+            "click_interval": 1.0
         },
         "Step4": {
             "location": "detect\\4.png",
-            "timeout": 30
+            "timeout": 30,
+            "repeat_clicks": 1,
+            "click_interval": 1.0
         },
         "Step5": {
             "location": "detect\\接受中文檔名.png",
             "timeout": 30,
-            "repeat_clicks": 2,
+            "repeat_clicks": 1,
             "click_interval": 1.0
         },
         "Step6": {
             "location": "detect\\EXIT1.png",
             "timeout": 30,
-            "repeat_clicks": 2,
+            "repeat_clicks": 1,
             "click_interval": 1.0
         }
     }

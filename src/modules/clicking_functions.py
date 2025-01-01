@@ -7,6 +7,7 @@ import os
 import subprocess
 import json
 from functions import get_resource_path
+import mss
 
 def load_steps_from_json(json_path):
     """
@@ -34,15 +35,15 @@ def load_steps_from_json(json_path):
         while f"Step{i}" in steps_dict:
             step_data = steps_dict[f"Step{i}"]
             
-            # 構建步驟信息
+            # 構建步驟信息，直接從 JSON 中提取，並提供預設值
             step_info = {
-                'location': step_data.get('location', ''),
+                'location': step_data['location'],
                 'timeout': step_data.get('timeout', 30),
-                'repeat_clicks': step_data.get('repeat_clicks', 1),
-                'click_interval': step_data.get('click_interval', 1)
+                'repeat_clicks': step_data.get('repeat_clicks', 1),  
+                'click_interval': step_data.get('click_interval', 1.0)  
             }
             
-            print(f"Step{i} - repeat_clicks: {step_info['repeat_clicks']}, click_interval: {step_info['click_interval']}")  # 調試輸出
+            print(f"Loaded Step{i}: {step_info}")  # 調試輸出
             
             steps_array.append(step_info)
             max_steps = i
@@ -100,7 +101,7 @@ def ADB_click(x, y):
         print(f"ADB 點擊時發生錯誤: {str(e)}")
         return False
 
-def detect_and_click_image(template_path, log_view, confidence=0.9, timeout=30, is_adb_mode=False, max_retries=3, repeat_clicks=1, click_interval=1):
+def detect_and_click_image(template_path, log_view, confidence=0.9, timeout=30, is_adb_mode=False, max_retries=3, repeat_clicks=1, click_interval=1.0):
     """
     在螢幕上偵測圖片並點擊
     
@@ -138,8 +139,11 @@ def detect_and_click_image(template_path, log_view, confidence=0.9, timeout=30, 
                     if screenshot is None:
                         raise Exception("ADB 截圖失敗")
                 else:
-                    screenshot = pyautogui.screenshot()
-                    screenshot = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
+                    with mss.mss() as sct:
+                        monitor = sct.monitors[0]  # 0 表示所有螢幕
+                        screenshot = sct.grab(monitor)
+                        screenshot = np.array(screenshot)
+                        screenshot = cv2.cvtColor(screenshot, cv2.COLOR_BGRA2BGR)
                 return screenshot
             except Exception as e:
                 retry_count += 1
@@ -225,9 +229,9 @@ def Click_step_by_step(step_array, log_view):
     total_steps = len(step_array)
     for current_step, step in enumerate(step_array, 1):
         template_path = get_resource_path(step['location'])
-        timeout = step['timeout']
-        repeat_clicks = step.get('repeat_clicks', 1)  # 確保有預設值
-        click_interval = step.get('click_interval', 1)  # 確保有預設值
+        timeout = step.get('timeout', 30)  
+        repeat_clicks = step.get('repeat_clicks', 1)  
+        click_interval = step.get('click_interval', 1.0)  
         
         log_view.append_log(
             f"正在執行第 {current_step}/{total_steps} 步: {step['location']}\n"
@@ -265,8 +269,8 @@ def ADB_Click_step_by_step(step_array, log_view):
     for current_step, step in enumerate(step_array, 1):
         template_path = get_resource_path(step['location'])
         timeout = step.get('timeout', 30)  # 使用步驟特定的 timeout 設定
-        repeat_clicks = step.get('repeat_clicks', 1)  # 獲取重複點擊次數
-        click_interval = step.get('click_interval', 1)  # 獲取點擊間隔
+        repeat_clicks = step.get('repeat_clicks', 1)     # 獲取重複點擊次數
+        click_interval = step.get('click_interval', 1.0)  # 獲取點擊間隔
         
         log_view.append_log(
             f"正在執行第 {current_step}/{total_steps} 步: {step['location']}\n"

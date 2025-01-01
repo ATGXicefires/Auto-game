@@ -778,7 +778,7 @@ class ProcessView(QWidget):
         json_path = os.path.join(base_path, 'connections.json')
         
         # 檢查是否已有存檔
-        if os.path.exists(json_path) and os.path.getsize(json_path) > 1:  # 檢查檔案是否大於空的 JSON {}
+        if os.path.exists(json_path) and os.path.getsize(json_path) > 2:  # 檢查檔案是否大於空的 JSON {}
             # 詢問使用者要新建還是覆蓋
             msgBox = QMessageBox()
             msgBox.setWindowTitle("保存專案")
@@ -1073,16 +1073,18 @@ class ProcessView(QWidget):
                     break
             
             if complete_path:
-                # 將步驟資訊加入到 JSON 中，使用新的格式包含 timeout
+                # 將步驟資訊加入到 JSON 中，使用新的格式包含 timeout, repeat_clicks, click_interval
                 steps = {}
                 for i, node in enumerate(complete_path):
                     # 使用 get_resource_path 取得相對於資源目錄的路徑
                     relative_path = os.path.join('detect', node)  # 先組合路徑
                     
-                    # 使用新的格式，包含 location 和 timeout
+                    # 使用新的格式，包含 location, timeout, repeat_clicks, click_interval
                     steps[f"Step{i+1}"] = {
                         "location": relative_path,
-                        "timeout": 30  # 預設 timeout 為 30 秒
+                        "timeout": 30,  # 預設 timeout 為 30 秒
+                        "repeat_clicks": 1,  # 預設點擊次數為 1
+                        "click_interval": 1.0  # 預設點擊間隔為 1 秒
                     }
                 
                 data['steps'] = steps
