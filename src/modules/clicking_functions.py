@@ -101,7 +101,7 @@ def ADB_click(x, y):
         print(f"ADB 點擊時發生錯誤: {str(e)}")
         return False
 
-def detect_and_click_image(template_path, log_view, confidence=0.9, timeout=30, is_adb_mode=False, max_retries=3, repeat_clicks=1, click_interval=1.0):
+def detect_and_click_image(template_path, log_view, confidence=0.8, timeout=30, is_adb_mode=False, max_retries=3, repeat_clicks=1, click_interval=1.0):
     """
     在螢幕上偵測圖片並點擊
     
