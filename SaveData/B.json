@@ -1,0 +1,35 @@
+{
+    "Interastral_Guide.png": {
+        "position": {
+            "x": 136.0,
+            "y": 13.0
+        },
+        "connections": []
+    },
+    "ESC.png": {
+        "position": {
+            "x": 0.0,
+            "y": 0.0
+        },
+        "connections": [
+            {
+                "from": "Interastral_Guide.png",
+                "to": "ESC.png"
+            }
+        ]
+    },
+    "steps": {
+        "Step1": {
+            "location": "detect\\ESC.png",
+            "timeout": 30,
+            "repeat_clicks": 1,
+            "click_interval": 1.0
+        },
+        "Step2": {
+            "location": "detect\\Interastral_Guide.png",
+            "timeout": 30,
+            "repeat_clicks": 1,
+            "click_interval": 1.0
+        }
+    }
+}
