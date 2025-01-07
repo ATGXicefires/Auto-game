@@ -35,6 +35,9 @@ def load_steps_from_json(json_path):
         while f"Step{i}" in steps_dict:
             step_data = steps_dict[f"Step{i}"]
             
+            # 調試輸出 step_data 的內容
+            print(f"Step data for Step{i}: {step_data}")
+            
             # 構建步驟信息，直接從 JSON 中提取，並提供預設值
             step_info = {
                 'location': step_data['location'],

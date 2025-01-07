@@ -148,7 +148,7 @@ class CanvasView(QGraphicsView):
     def add_image(self):
         """Add an image to the scene at the center of the viewport."""
         file_path, _ = QFileDialog.getOpenFileName(
-            self, "Select Image", "", "Images (*.png *.jpg *.jpeg *.bmp *.gif)"
+            self, "Select Image", "", "Images (*.png *.jpg *.jpeg *.bmp)"
         )
         if file_path:
             pixmap = QPixmap(file_path)
