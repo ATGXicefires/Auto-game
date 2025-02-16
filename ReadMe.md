@@ -35,3 +35,7 @@ clicking_functions.py 是處理ClickWorker2相關的點擊功能實現
 ### 這是高三專題實作，僅供學術研究使用
 
 編程者 : ATGXicefires & wj6wj6(Koyana) & Creeperlol
+
+### 注意事項
+
+請確保圖片解析度與要偵測的畫面一樣
